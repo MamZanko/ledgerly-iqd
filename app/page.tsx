@@ -444,7 +444,6 @@ export default function Page() {
       <aside className="sidebar">
         <div className="brand"><span className="brand-mark">L</span><span>ledgerly</span></div>
         <div className="nav-group">
-          <p className="nav-label">Workspace</p>
           {nav('Overview')}
           {nav('All Transactions')}
           {nav('Analytics & Reports')}
@@ -457,7 +456,6 @@ export default function Page() {
         <div className="nav-group">
           <p className="nav-label">Manage</p>
           {nav('Settings')}
-          {nav('History')}
           {nav('Trash')}
         </div>
         <div className="sidebar-footer">
@@ -482,7 +480,7 @@ export default function Page() {
 
         <div className="content">
           <AnimatePresence mode="wait" initial={false}>
-            <motion.div key={view} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.18, ease: 'easeOut' }}>
+            <motion.div className="view-stack" key={view} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.18, ease: 'easeOut' }}>
               {view === 'Overview' && (
                 <>
                   <div className="welcome">
@@ -936,21 +934,21 @@ export default function Page() {
 
       {modal && (
         <div className="modal-backdrop" onClick={resetModal}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-head">
+          <div className="modal relative z-50 max-w-md w-full bg-slate-900 text-white border border-slate-800 rounded-2xl p-6 shadow-2xl overflow-visible" onClick={e => e.stopPropagation()}>
+            <div className="flex items-start justify-between">
               <div>
-                <p className="eyebrow">Ledger entry</p>
-                <h2>{modalMode === 'edit' ? 'Edit transaction' : 'Add transaction'}</h2>
+                <h3 className="uppercase text-sm font-medium text-slate-300">LEDGER ENTRY</h3>
+                <h2 className="mt-1 text-xl font-bold text-white">{modalMode === 'edit' ? 'Edit transaction' : 'Add transaction'}</h2>
               </div>
-              <button className="icon-button" onClick={resetModal}><X size={18} /></button>
+              <button className="text-slate-400 hover:text-white p-2 rounded-lg hover:bg-slate-800 transition-colors" onClick={resetModal} aria-label="Close"> <X size={18} /></button>
             </div>
 
-            <div className="form">
-              <div className="merchant-field">
-                <label>Merchant</label>
-                <input autoFocus placeholder="e.g. Family Mall" value={form.merchant} onChange={e => { setForm({ ...form, merchant: e.target.value }); setMerchantQuery(e.target.value) }} />
+            <div className="flex flex-col space-y-4 mt-4">
+              <div className="flex flex-col space-y-1.5 relative">
+                <label className="text-slate-300 font-medium text-sm mb-1.5 block">Merchant Name</label>
+                <input autoFocus className="bg-slate-800 border border-slate-700 text-white placeholder:text-slate-500 rounded-xl px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/30 transition-all w-full" placeholder="e.g. Family Mall" value={form.merchant} onChange={e => { setForm({ ...form, merchant: e.target.value }); setMerchantQuery(e.target.value) }} />
                 {merchantSuggestions.length > 0 && form.merchant && (
-                  <div className="suggestion-list">
+                  <div className="suggestion-list absolute z-[100] top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl max-h-48 overflow-y-auto">
                     {merchantSuggestions.map(name => (
                       <button key={name} type="button" className="suggestion-item" onClick={() => { setForm({ ...form, merchant: name }); setMerchantQuery(name); }}>
                         {name}
@@ -960,35 +958,40 @@ export default function Page() {
                 )}
               </div>
 
-              <div className="category-field">
-                <label>Category</label>
-                <input value={form.category} onFocus={() => setCategoryQuery(form.category)} onChange={e => { setForm({ ...form, category: e.target.value }); setCategoryQuery(e.target.value) }} />
-                {categoryMatches.length > 0 && (
-                  <div className="suggestion-list category-suggestions">
-                    {categoryMatches.map(category => (
-                      <button key={category} type="button" className="suggestion-item" onClick={() => { setForm({ ...form, category }); setCategoryQuery(category) }}>
-                        {category}
-                      </button>
-                    ))}
+              <div className="flex flex-col space-y-1.5 relative">
+                <label className="text-slate-300 font-medium text-sm mb-1.5 block">Category</label>
+                <select className="bg-slate-800 border border-slate-700 text-white placeholder:text-slate-500 rounded-xl px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/30 transition-all w-full" value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}>
+                  {categoryOptions.map(c => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col space-y-1.5 relative">
+                  <label className="text-slate-300 font-medium text-sm mb-1.5 block">Amount (IQD)</label>
+                  <div className="relative">
+                    <input type="number" className="bg-slate-800 border border-slate-700 text-white placeholder:text-slate-500 rounded-xl px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/30 transition-all w-full" placeholder="0" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm px-2 py-1 rounded-md">د.ع</span>
                   </div>
-                )}
+                </div>
+
+                <div className="flex flex-col space-y-1.5">
+                  <label className="text-slate-300 font-medium text-sm mb-1.5 block">Date</label>
+                  <input type="date" className="bg-slate-800 border border-slate-700 text-white placeholder:text-slate-500 rounded-xl px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/30 transition-all w-full" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} />
+                </div>
               </div>
 
-              <div className="form-row">
-                <label>Amount (IQD)
-                  <input type="number" placeholder="0" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} />
-                </label>
-                <label>Date
-                  <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} />
-                </label>
+              <div className="flex items-center">
+                <div className="inline-flex rounded-xl bg-slate-800 p-1 border border-slate-700">
+                  <button type="button" className={`px-4 py-2 rounded-lg ${form.type === 'Expense' ? 'bg-slate-700 text-white' : 'text-slate-300'}`} onClick={() => setForm({ ...form, type: 'Expense' })}>Expense</button>
+                  <button type="button" className={`px-4 py-2 rounded-lg ${form.type === 'Income' ? 'bg-slate-700 text-white' : 'text-slate-300'}`} onClick={() => setForm({ ...form, type: 'Income' })}>Income</button>
+                </div>
               </div>
 
-              <div className="type-toggle">
-                <button type="button" className={form.type === 'Expense' ? 'selected' : ''} onClick={() => setForm({ ...form, type: 'Expense' })}>Expense</button>
-                <button type="button" className={form.type === 'Income' ? 'selected' : ''} onClick={() => setForm({ ...form, type: 'Income' })}>Income</button>
+              <div>
+                <button className="w-full py-3.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-medium transition-all" type="button" onClick={modalMode === 'edit' ? saveTransaction : addTransaction}>{modalMode === 'edit' ? 'Save changes' : 'Save transaction'}</button>
               </div>
-
-              <button className="primary-button full" type="button" onClick={modalMode === 'edit' ? saveTransaction : addTransaction}>{modalMode === 'edit' ? 'Save changes' : 'Save transaction'}</button>
             </div>
           </div>
         </div>
