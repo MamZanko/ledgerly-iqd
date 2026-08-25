@@ -18,6 +18,7 @@ import {
   LayoutDashboard,
   Laptop,
   Menu,
+  MoreVertical,
   MoonStar,
   Palette,
   Pencil,
@@ -48,7 +49,10 @@ type HistoryEntry = {
 type SettingsSection = 'profile' | 'regional' | 'appearance' | 'data'
 type TransactionForm = { merchant: string; category: string; amount: string; date: string; type: 'Expense' | 'Income' }
 type BudgetForm = { name: string; limit: string; color: string }
-type BillForm = { name: string; amount: string; due: string; frequency: 'Monthly' | 'Yearly' }
+  type BillForm = { name: string; amount: string; due: string; frequency: 'Monthly' | 'Yearly' }
+  type Budget = { name: string; spent: number; limit: number; color: string }
+  type Bill = { name: string; due: string; amount: number; paid: boolean; frequency: 'Monthly' | 'Yearly' }
+
 
 const emptyBudgetForm: BudgetForm = { name: '', limit: '', color: 'bg-primary' }
 const emptyBillForm: BillForm = { name: '', amount: '', due: '2026-08-28', frequency: 'Monthly' }
@@ -93,17 +97,17 @@ const seed: Transaction[] = [
   { id: 7, merchant: 'Erbil Fitness', category: 'Health', date: '2026-08-07', amount: 75000, type: 'Expense' },
 ]
 
-const budgets = [
+const seedBudgets: Budget[] = [
   { name: 'Groceries', spent: 286500, limit: 400000, color: 'bg-primary' },
   { name: 'Transport', spent: 148000, limit: 250000, color: 'bg-chart-2' },
   { name: 'Dining', spent: 192500, limit: 300000, color: 'bg-chart-3' },
   { name: 'Shopping', spent: 245000, limit: 500000, color: 'bg-chart-4' },
 ]
 
-const bills = [
-  { name: 'Zain Iraq', due: 'Aug 28', amount: 35000, paid: false },
-  { name: 'Erbil Water', due: 'Sep 02', amount: 18000, paid: false },
-  { name: 'Netflix', due: 'Sep 05', amount: 16500, paid: true },
+const seedBills: Bill[] = [
+  { name: 'Zain Iraq', due: 'Aug 28', amount: 35000, paid: false, frequency: 'Monthly' },
+  { name: 'Erbil Water', due: 'Sep 02', amount: 18000, paid: false, frequency: 'Monthly' },
+  { name: 'Netflix', due: 'Sep 05', amount: 16500, paid: true, frequency: 'Monthly' },
 ]
 
 const icons: Record<string, React.ElementType> = {
@@ -197,6 +201,8 @@ function SettingsSwitch({ checked, onClick, label, description }: { checked: boo
 export default function Page() {
   const [view, setView] = useState<View>('Overview')
   const [transactions, setTransactions] = useState(seed)
+  const [budgets, setBudgets] = useState<Budget[]>(seedBudgets)
+  const [bills, setBills] = useState<Bill[]>(seedBills)
   const [history, setHistory] = useState<HistoryEntry[]>([
     { id: 1, transactionId: 1, action: 'created', changedFields: { merchant: { old: '', new: 'Carrefour' }, amount: { old: 0, new: 84500 } }, timestamp: '2026-08-23T09:25:00.000Z' },
     { id: 2, transactionId: 4, action: 'created', changedFields: { merchant: { old: '', new: 'Salary · August' }, amount: { old: 0, new: 2850000 } }, timestamp: '2026-08-18T08:30:00.000Z' },
@@ -206,6 +212,8 @@ export default function Page() {
   const [isAddTransactionOpen, setIsAddTransactionOpen] = useState(false)
   const [isAddBudgetOpen, setIsAddBudgetOpen] = useState(false)
   const [isAddBillOpen, setIsAddBillOpen] = useState(false)
+  const [budgetMenu, setBudgetMenu] = useState<string | null>(null)
+  const [editingBudget, setEditingBudget] = useState<string | null>(null)
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add')
   const [editingId, setEditingId] = useState<number | null>(null)
   const [showPrintSummary, setShowPrintSummary] = useState(false)
@@ -306,8 +314,21 @@ export default function Page() {
   }
 
   const openBudgetModal = () => {
+    setEditingBudget(null)
     setBudgetForm(emptyBudgetForm)
     setIsAddBudgetOpen(true)
+  }
+
+  const openEditBudget = (budget: Budget) => {
+    setEditingBudget(budget.name)
+    setBudgetForm({ name: budget.name, limit: String(budget.limit), color: budget.color })
+    setBudgetMenu(null)
+    setIsAddBudgetOpen(true)
+  }
+
+  const deleteBudget = (name: string) => {
+    setBudgets(prev => prev.filter(budget => budget.name !== name))
+    setBudgetMenu(null)
   }
 
   const openBillModal = () => {
@@ -317,15 +338,22 @@ export default function Page() {
 
   const saveBudget = () => {
     if (!budgetForm.name.trim() || !budgetForm.limit || Number(budgetForm.limit) <= 0) return
+    setBudgets(prev => editingBudget
+      ? prev.map(budget => budget.name === editingBudget ? { ...budget, name: budgetForm.name.trim(), limit: Number(budgetForm.limit), color: budgetForm.color } : budget)
+      : [...prev, { name: budgetForm.name.trim(), spent: 0, limit: Number(budgetForm.limit), color: budgetForm.color }])
     setIsAddBudgetOpen(false)
     setBudgetForm(emptyBudgetForm)
+    setEditingBudget(null)
   }
 
   const saveBill = () => {
     if (!billForm.name.trim() || !billForm.amount || Number(billForm.amount) <= 0 || !billForm.due) return
+    setBills(prev => [...prev, { name: billForm.name.trim(), amount: Number(billForm.amount), due: new Date(`${billForm.due}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: '2-digit' }), paid: false, frequency: billForm.frequency }])
     setIsAddBillOpen(false)
     setBillForm(emptyBillForm)
   }
+
+  const toggleBillPaid = (name: string) => setBills(prev => prev.map(bill => bill.name === name ? { ...bill, paid: !bill.paid } : bill))
 
   const openEditModal = (id: number) => {
     const transaction = transactions.find(t => t.id === id)
@@ -404,14 +432,14 @@ export default function Page() {
   }
 
   const restoreTransaction = (id: number) => {
-    const item = transactions.find(t => t.id === id)
-    if (!item) return
     setTransactions(prev => prev.map(t => t.id === id ? { ...t, deleted: false } : t))
-    logHistory(id, 'restored', {
-      merchant: { old: item.merchant, new: item.merchant },
-      category: { old: item.category, new: item.category },
-    })
+    logHistory(id, 'restored')
   }
+
+  const permanentlyDeleteTransaction = (id: number) => {
+    setTransactions(prev => prev.filter(t => t.id !== id))
+  }
+
 
   const exportCsv = () => {
     const csv = ['Merchant,Category,Date,Amount,Type', ...active.map(t => `${t.merchant},${t.category},${t.date},${t.amount},${t.type}`)].join('\n')
@@ -639,7 +667,7 @@ export default function Page() {
                   <div className="budget-cards">
                     {budgets.map(b => (
                       <div className="panel budget-card" key={b.name}>
-                        <div className="budget-card-head"><div className="category-dot" /><strong>{b.name}</strong><button className="kebab">•••</button></div>
+                        <div className="budget-card-head"><div className="category-dot" /><strong>{b.name}</strong><div className="relative"><button type="button" className="kebab" aria-label={`Actions for ${b.name}`} onClick={() => setBudgetMenu(budgetMenu === b.name ? null : b.name)}><MoreVertical size={17} /></button>{budgetMenu === b.name && <div className="card-menu"><button type="button" onClick={() => openEditBudget(b)}>Edit Limit</button><button type="button" onClick={() => deleteBudget(b.name)}>Delete Category</button></div>}</div></div>
                         <p className="big-number">{money(b.spent)}</p>
                         <p className="muted">of {money(b.limit)} planned</p>
                         <div className="progress large"><span className={b.color} style={{ width: `${(b.spent / b.limit) * 100}%` }} /></div>
@@ -659,7 +687,7 @@ export default function Page() {
                         <div className="bill-icon"><CreditCard size={18} /></div>
                         <div className="bill-info"><strong>{b.name}</strong><small>Due {b.due}</small></div>
                         <strong>{money(b.amount)}</strong>
-                        <button className={`status ${b.paid ? 'paid' : ''}`}><Check size={14} /> {b.paid ? 'Paid' : 'Mark paid'}</button>
+                        <button type="button" className={`status ${b.paid ? 'paid' : ''}`} onClick={() => toggleBillPaid(b.name)}><Check size={14} /> {b.paid ? 'Paid' : 'Mark paid'}</button>
                       </div>
                     ))}
                   </div>
@@ -801,7 +829,7 @@ export default function Page() {
                 <div className="panel page-panel">
                   <SectionTitle title="Recently deleted" action={<button className="outline-button" onClick={() => setTransactions(prev => prev.map(t => ({ ...t, deleted: false })))}>Empty trash</button>} />
                   {transactions.filter(t => t.deleted).length ? (
-                    <TransactionList rows={transactions.filter(t => t.deleted)} onRestore={restoreTransaction} />
+                    <TransactionList rows={transactions.filter(t => t.deleted)} onRestore={restoreTransaction} onPermanentDelete={permanentlyDeleteTransaction} />
                   ) : (
                     <div className="empty"><Trash2 size={28} /><h3>Trash is empty</h3><p>Deleted transactions will appear here.</p></div>
                   )}
@@ -1094,7 +1122,7 @@ export default function Page() {
   )
 }
 
-function TransactionList({ rows, onDelete, onEdit, onRestore }: { rows: Transaction[]; onDelete?: (id: number) => void; onEdit?: (id: number) => void; onRestore?: (id: number) => void }) {
+function TransactionList({ rows, onDelete, onEdit, onRestore, onPermanentDelete }: { rows: Transaction[]; onDelete?: (id: number) => void; onEdit?: (id: number) => void; onRestore?: (id: number) => void; onPermanentDelete?: (id: number) => void }) {
   return (
     <motion.div className="transactions" initial="hidden" animate="show" variants={{ hidden: {}, show: { transition: { staggerChildren: 0.03 } } }}>
       {rows.map(t => (
@@ -1110,6 +1138,7 @@ function TransactionList({ rows, onDelete, onEdit, onRestore }: { rows: Transact
           {onEdit && <button className="row-action" aria-label="Edit" onClick={() => onEdit(t.id)}><Pencil size={15} /></button>}
           {onDelete && <button className="row-action" aria-label="Delete" onClick={() => onDelete(t.id)}><Trash2 size={15} /></button>}
           {onRestore && <button className="row-action" aria-label="Restore" onClick={() => onRestore(t.id)}><RotateCcw size={15} /></button>}
+  {onPermanentDelete && <button className="row-action destructive" aria-label="Permanently delete" onClick={() => onPermanentDelete(t.id)}><Trash2 size={15} /></button>}
         </motion.div>
       ))}
     </motion.div>
