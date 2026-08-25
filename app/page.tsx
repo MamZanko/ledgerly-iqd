@@ -47,6 +47,11 @@ type HistoryEntry = {
 }
 type SettingsSection = 'profile' | 'regional' | 'appearance' | 'data'
 type TransactionForm = { merchant: string; category: string; amount: string; date: string; type: 'Expense' | 'Income' }
+type BudgetForm = { name: string; limit: string; color: string }
+type BillForm = { name: string; amount: string; due: string; frequency: 'Monthly' | 'Yearly' }
+
+const emptyBudgetForm: BudgetForm = { name: '', limit: '', color: 'bg-primary' }
+const emptyBillForm: BillForm = { name: '', amount: '', due: '2026-08-28', frequency: 'Monthly' }
 
 const settingsSections: { id: SettingsSection; label: string; icon: React.ElementType }[] = [
   { id: 'profile', label: 'Profile', icon: CircleUserRound },
@@ -198,11 +203,15 @@ export default function Page() {
   ])
   const [query, setQuery] = useState('')
   const [historyFilter, setHistoryFilter] = useState<'All' | HistoryAction>('All')
-  const [modal, setModal] = useState(false)
+  const [isAddTransactionOpen, setIsAddTransactionOpen] = useState(false)
+  const [isAddBudgetOpen, setIsAddBudgetOpen] = useState(false)
+  const [isAddBillOpen, setIsAddBillOpen] = useState(false)
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add')
   const [editingId, setEditingId] = useState<number | null>(null)
   const [showPrintSummary, setShowPrintSummary] = useState(false)
   const [form, setForm] = useState<TransactionForm>(emptyForm)
+  const [budgetForm, setBudgetForm] = useState<BudgetForm>(emptyBudgetForm)
+  const [billForm, setBillForm] = useState<BillForm>(emptyBillForm)
   const [merchantQuery, setMerchantQuery] = useState('')
   const [categoryQuery, setCategoryQuery] = useState('')
   const [settingsSection, setSettingsSection] = useState<SettingsSection>('profile')
@@ -279,7 +288,7 @@ export default function Page() {
   }, [active, comparisonCategories, periodA, periodB])
 
   const resetModal = () => {
-    setModal(false)
+    setIsAddTransactionOpen(false)
     setModalMode('add')
     setEditingId(null)
     setForm(emptyForm)
@@ -293,7 +302,29 @@ export default function Page() {
     setCategoryQuery('')
     setModalMode('add')
     setEditingId(null)
-    setModal(true)
+    setIsAddTransactionOpen(true)
+  }
+
+  const openBudgetModal = () => {
+    setBudgetForm(emptyBudgetForm)
+    setIsAddBudgetOpen(true)
+  }
+
+  const openBillModal = () => {
+    setBillForm(emptyBillForm)
+    setIsAddBillOpen(true)
+  }
+
+  const saveBudget = () => {
+    if (!budgetForm.name.trim() || !budgetForm.limit || Number(budgetForm.limit) <= 0) return
+    setIsAddBudgetOpen(false)
+    setBudgetForm(emptyBudgetForm)
+  }
+
+  const saveBill = () => {
+    if (!billForm.name.trim() || !billForm.amount || Number(billForm.amount) <= 0 || !billForm.due) return
+    setIsAddBillOpen(false)
+    setBillForm(emptyBillForm)
   }
 
   const openEditModal = (id: number) => {
@@ -310,7 +341,7 @@ export default function Page() {
     })
     setMerchantQuery(transaction.merchant)
     setCategoryQuery(transaction.category)
-    setModal(true)
+    setIsAddTransactionOpen(true)
   }
 
   const logHistory = (transactionId: number, action: HistoryAction, changedFields: Record<string, { old: any; new: any }> | null = null) => {
@@ -604,7 +635,7 @@ export default function Page() {
 
               {view === 'Category Budgets' && (
                 <div className="budget-page">
-                  <SectionTitle title="Monthly category budgets" action={<button className="primary-button" onClick={() => setModal(true)}><Plus size={17} /> Add budget</button>} />
+                  <SectionTitle title="Monthly category budgets" action={<button className="primary-button" onClick={openBudgetModal}><Plus size={17} /> Add budget</button>} />
                   <div className="budget-cards">
                     {budgets.map(b => (
                       <div className="panel budget-card" key={b.name}>
@@ -621,7 +652,7 @@ export default function Page() {
 
               {view === 'Recurring & Bills' && (
                 <div className="panel page-panel">
-                  <SectionTitle title="Upcoming bills" action={<button className="primary-button"><Plus size={17} /> Add bill</button>} />
+                  <SectionTitle title="Upcoming bills" action={<button className="primary-button" onClick={openBillModal}><Plus size={17} /> Add bill</button>} />
                   <div className="bill-list">
                     {bills.map(b => (
                       <div className="bill-row" key={b.name}>
@@ -932,7 +963,7 @@ export default function Page() {
         </div>
       </section>
 
-      {modal && (
+      {isAddTransactionOpen && (
         <div className="modal-backdrop" onClick={resetModal}>
           <div className="modal relative z-50 max-w-md w-full bg-slate-900 text-white border border-slate-800 rounded-2xl p-6 shadow-2xl overflow-visible" onClick={e => e.stopPropagation()}>
             <div className="flex items-start justify-between">
@@ -992,6 +1023,34 @@ export default function Page() {
               <div>
                 <button className="w-full py-3.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-medium transition-all" type="button" onClick={modalMode === 'edit' ? saveTransaction : addTransaction}>{modalMode === 'edit' ? 'Save changes' : 'Save transaction'}</button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isAddBudgetOpen && (
+        <div className="modal-backdrop" onClick={() => setIsAddBudgetOpen(false)}>
+          <div className="modal relative z-50 max-w-md w-full bg-slate-900 text-white border border-slate-800 rounded-2xl p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-start justify-between"><div><h3 className="uppercase text-sm font-medium text-slate-300">PLAN & TRACK</h3><h2 className="mt-1 text-xl font-bold text-white">Add Budget Category</h2></div><button className="text-slate-400 hover:text-white p-2 rounded-lg hover:bg-slate-800" onClick={() => setIsAddBudgetOpen(false)} aria-label="Close"><X size={18} /></button></div>
+            <div className="flex flex-col gap-4 mt-4">
+              <label className="flex flex-col gap-1.5 text-slate-300 text-sm font-medium">Category Name<input autoFocus className="modal-input" placeholder="e.g. Groceries, Health" value={budgetForm.name} onChange={e => setBudgetForm({ ...budgetForm, name: e.target.value })} /></label>
+              <label className="flex flex-col gap-1.5 text-slate-300 text-sm font-medium">Allocated Budget (IQD)<input type="number" className="modal-input" placeholder="0" value={budgetForm.limit} onChange={e => setBudgetForm({ ...budgetForm, limit: e.target.value })} /></label>
+              <label className="flex flex-col gap-1.5 text-slate-300 text-sm font-medium">Color / Icon<select className="modal-input" value={budgetForm.color} onChange={e => setBudgetForm({ ...budgetForm, color: e.target.value })}><option value="bg-primary">Emerald</option><option value="bg-chart-2">Blue</option><option value="bg-chart-3">Amber</option><option value="bg-chart-4">Rose</option></select></label>
+              <button className="w-full py-3.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-medium" type="button" onClick={saveBudget}>Save budget category</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isAddBillOpen && (
+        <div className="modal-backdrop" onClick={() => setIsAddBillOpen(false)}>
+          <div className="modal relative z-50 max-w-md w-full bg-slate-900 text-white border border-slate-800 rounded-2xl p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-start justify-between"><div><h3 className="uppercase text-sm font-medium text-slate-300">PLAN & TRACK</h3><h2 className="mt-1 text-xl font-bold text-white">Add Recurring Expense</h2></div><button className="text-slate-400 hover:text-white p-2 rounded-lg hover:bg-slate-800" onClick={() => setIsAddBillOpen(false)} aria-label="Close"><X size={18} /></button></div>
+            <div className="flex flex-col gap-4 mt-4">
+              <label className="flex flex-col gap-1.5 text-slate-300 text-sm font-medium">Service Name<input autoFocus className="modal-input" placeholder="e.g. Generator Fee" value={billForm.name} onChange={e => setBillForm({ ...billForm, name: e.target.value })} /></label>
+              <label className="flex flex-col gap-1.5 text-slate-300 text-sm font-medium">Billing Amount (IQD)<input type="number" className="modal-input" placeholder="0" value={billForm.amount} onChange={e => setBillForm({ ...billForm, amount: e.target.value })} /></label>
+              <div className="grid grid-cols-2 gap-4"><label className="flex flex-col gap-1.5 text-slate-300 text-sm font-medium">Due Date<input type="date" className="modal-input" value={billForm.due} onChange={e => setBillForm({ ...billForm, due: e.target.value })} /></label><label className="flex flex-col gap-1.5 text-slate-300 text-sm font-medium">Frequency<select className="modal-input" value={billForm.frequency} onChange={e => setBillForm({ ...billForm, frequency: e.target.value as BillForm['frequency'] })}><option>Monthly</option><option>Yearly</option></select></label></div>
+              <button className="w-full py-3.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-medium" type="button" onClick={saveBill}>Save recurring expense</button>
             </div>
           </div>
         </div>
