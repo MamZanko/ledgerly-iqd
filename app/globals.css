@@ -165,7 +165,8 @@ input:focus, select:focus { outline: none; border-color: var(--primary); box-sha
   display: grid;
   place-items: center;
   padding: 24px;
-  background: rgba(20, 28, 35, 0.32);
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(4px);
   z-index: 50;
 }
 .modal {
@@ -179,11 +180,11 @@ input:focus, select:focus { outline: none; border-color: var(--primary); box-sha
 .modal-input {
   width: 100%;
   min-height: 44px;
-  border: 1px solid #334155;
+  border: 1px solid #e2e8f0;
   border-radius: 0.75rem;
-  background: #1e293b;
-  color: #fff;
-  padding: 0 1rem;
+  background: #f8fafc;
+  color: #0f172a;
+  padding: 0.75rem 1rem;
   outline: none;
 }
 .modal-input:focus { border-color: #10b981; box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2); }

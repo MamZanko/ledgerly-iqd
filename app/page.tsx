@@ -993,19 +993,19 @@ export default function Page() {
 
       {isAddTransactionOpen && (
         <div className="modal-backdrop" onClick={resetModal}>
-          <div className="modal relative z-50 max-w-md w-full bg-slate-900 text-white border border-slate-800 rounded-2xl p-6 shadow-2xl overflow-visible" onClick={e => e.stopPropagation()}>
+          <div className="modal relative z-50 max-w-md w-full bg-white text-slate-900 border border-slate-200 rounded-2xl p-6 shadow-2xl overflow-visible" onClick={e => e.stopPropagation()}>
             <div className="flex items-start justify-between">
               <div>
-                <h3 className="uppercase text-sm font-medium text-slate-300">LEDGER ENTRY</h3>
-                <h2 className="mt-1 text-xl font-bold text-white">{modalMode === 'edit' ? 'Edit transaction' : 'Add transaction'}</h2>
+                <h3 className="text-xs font-semibold tracking-wider text-emerald-700 uppercase">LEDGER ENTRY</h3>
+                <h2 className="mt-1 text-xl font-bold text-slate-900">{modalMode === 'edit' ? 'Edit transaction' : 'Add transaction'}</h2>
               </div>
-              <button className="text-slate-400 hover:text-white p-2 rounded-lg hover:bg-slate-800 transition-colors" onClick={resetModal} aria-label="Close"> <X size={18} /></button>
+              <button className="text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg p-2 transition-colors transition-colors" onClick={resetModal} aria-label="Close"> <X size={18} /></button>
             </div>
 
             <div className="flex flex-col space-y-4 mt-4">
               <div className="flex flex-col space-y-1.5 relative">
                 <label className="text-slate-300 font-medium text-sm mb-1.5 block">Merchant Name</label>
-                <input autoFocus className="bg-slate-800 border border-slate-700 text-white placeholder:text-slate-500 rounded-xl px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/30 transition-all w-full" placeholder="e.g. Family Mall" value={form.merchant} onChange={e => { setForm({ ...form, merchant: e.target.value }); setMerchantQuery(e.target.value) }} />
+                <input autoFocus className="bg-slate-50 border border-slate-200 text-slate-900 placeholder:text-slate-400 rounded-xl px-4 py-3 focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 transition-all w-full" placeholder="e.g. Family Mall" value={form.merchant} onChange={e => { setForm({ ...form, merchant: e.target.value }); setMerchantQuery(e.target.value) }} />
                 {merchantSuggestions.length > 0 && form.merchant && (
                   <div className="suggestion-list absolute z-[100] top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl max-h-48 overflow-y-auto">
                     {merchantSuggestions.map(name => (
@@ -1019,7 +1019,7 @@ export default function Page() {
 
               <div className="flex flex-col space-y-1.5 relative">
                 <label className="text-slate-300 font-medium text-sm mb-1.5 block">Category</label>
-                <select className="bg-slate-800 border border-slate-700 text-white placeholder:text-slate-500 rounded-xl px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/30 transition-all w-full" value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}>
+                <select className="bg-slate-50 border border-slate-200 text-slate-900 placeholder:text-slate-400 rounded-xl px-4 py-3 focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 transition-all w-full" value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}>
                   {categoryOptions.map(c => (
                     <option key={c} value={c}>{c}</option>
                   ))}
@@ -1030,21 +1030,21 @@ export default function Page() {
                 <div className="flex flex-col space-y-1.5 relative">
                   <label className="text-slate-300 font-medium text-sm mb-1.5 block">Amount (IQD)</label>
                   <div className="relative">
-                    <input type="number" className="bg-slate-800 border border-slate-700 text-white placeholder:text-slate-500 rounded-xl px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/30 transition-all w-full" placeholder="0" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} />
+                    <input type="number" className="bg-slate-50 border border-slate-200 text-slate-900 placeholder:text-slate-400 rounded-xl px-4 py-3 focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 transition-all w-full" placeholder="0" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm px-2 py-1 rounded-md">د.ع</span>
                   </div>
                 </div>
 
                 <div className="flex flex-col space-y-1.5">
                   <label className="text-slate-300 font-medium text-sm mb-1.5 block">Date</label>
-                  <input type="date" className="bg-slate-800 border border-slate-700 text-white placeholder:text-slate-500 rounded-xl px-4 py-3 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/30 transition-all w-full" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} />
+                  <input type="date" className="bg-slate-50 border border-slate-200 text-slate-900 placeholder:text-slate-400 rounded-xl px-4 py-3 focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 transition-all w-full" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} />
                 </div>
               </div>
 
               <div className="flex items-center">
-                <div className="inline-flex rounded-xl bg-slate-800 p-1 border border-slate-700">
-                  <button type="button" className={`px-4 py-2 rounded-lg ${form.type === 'Expense' ? 'bg-slate-700 text-white' : 'text-slate-300'}`} onClick={() => setForm({ ...form, type: 'Expense' })}>Expense</button>
-                  <button type="button" className={`px-4 py-2 rounded-lg ${form.type === 'Income' ? 'bg-slate-700 text-white' : 'text-slate-300'}`} onClick={() => setForm({ ...form, type: 'Income' })}>Income</button>
+                <div className="inline-flex rounded-xl bg-slate-100 p-1">
+                  <button type="button" className={`px-4 py-2 rounded-lg ${form.type === 'Expense' ? 'bg-white text-slate-900 shadow-sm font-medium' : 'text-slate-500'}`} onClick={() => setForm({ ...form, type: 'Expense' })}>Expense</button>
+                  <button type="button" className={`px-4 py-2 rounded-lg ${form.type === 'Income' ? 'bg-white text-slate-900 shadow-sm font-medium' : 'text-slate-500'}`} onClick={() => setForm({ ...form, type: 'Income' })}>Income</button>
                 </div>
               </div>
 
@@ -1058,12 +1058,12 @@ export default function Page() {
 
       {isAddBudgetOpen && (
         <div className="modal-backdrop" onClick={() => setIsAddBudgetOpen(false)}>
-          <div className="modal relative z-50 max-w-md w-full bg-slate-900 text-white border border-slate-800 rounded-2xl p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
-            <div className="flex items-start justify-between"><div><h3 className="uppercase text-sm font-medium text-slate-300">PLAN & TRACK</h3><h2 className="mt-1 text-xl font-bold text-white">Add Budget Category</h2></div><button className="text-slate-400 hover:text-white p-2 rounded-lg hover:bg-slate-800" onClick={() => setIsAddBudgetOpen(false)} aria-label="Close"><X size={18} /></button></div>
+          <div className="modal relative z-50 max-w-md w-full bg-white text-slate-900 border border-slate-200 rounded-2xl p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-start justify-between"><div><h3 className="text-xs font-semibold tracking-wider text-emerald-700 uppercase">PLAN & TRACK</h3><h2 className="mt-1 text-xl font-bold text-slate-900">Add Budget Category</h2></div><button className="text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg p-2 transition-colors" onClick={() => setIsAddBudgetOpen(false)} aria-label="Close"><X size={18} /></button></div>
             <div className="flex flex-col gap-4 mt-4">
-              <label className="flex flex-col gap-1.5 text-slate-300 text-sm font-medium">Category Name<input autoFocus className="modal-input" placeholder="e.g. Groceries, Health" value={budgetForm.name} onChange={e => setBudgetForm({ ...budgetForm, name: e.target.value })} /></label>
-              <label className="flex flex-col gap-1.5 text-slate-300 text-sm font-medium">Allocated Budget (IQD)<input type="number" className="modal-input" placeholder="0" value={budgetForm.limit} onChange={e => setBudgetForm({ ...budgetForm, limit: e.target.value })} /></label>
-              <label className="flex flex-col gap-1.5 text-slate-300 text-sm font-medium">Color / Icon<select className="modal-input" value={budgetForm.color} onChange={e => setBudgetForm({ ...budgetForm, color: e.target.value })}><option value="bg-primary">Emerald</option><option value="bg-chart-2">Blue</option><option value="bg-chart-3">Amber</option><option value="bg-chart-4">Rose</option></select></label>
+              <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-700 mb-1.5 block">Category Name<input autoFocus className="modal-input" placeholder="e.g. Groceries, Health" value={budgetForm.name} onChange={e => setBudgetForm({ ...budgetForm, name: e.target.value })} /></label>
+              <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-700 mb-1.5 block">Allocated Budget (IQD)<input type="number" className="modal-input" placeholder="0" value={budgetForm.limit} onChange={e => setBudgetForm({ ...budgetForm, limit: e.target.value })} /></label>
+              <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-700 mb-1.5 block">Color / Icon<select className="modal-input" value={budgetForm.color} onChange={e => setBudgetForm({ ...budgetForm, color: e.target.value })}><option value="bg-primary">Emerald</option><option value="bg-chart-2">Blue</option><option value="bg-chart-3">Amber</option><option value="bg-chart-4">Rose</option></select></label>
               <button className="w-full py-3.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-medium" type="button" onClick={saveBudget}>Save budget category</button>
             </div>
           </div>
@@ -1072,12 +1072,12 @@ export default function Page() {
 
       {isAddBillOpen && (
         <div className="modal-backdrop" onClick={() => setIsAddBillOpen(false)}>
-          <div className="modal relative z-50 max-w-md w-full bg-slate-900 text-white border border-slate-800 rounded-2xl p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
-            <div className="flex items-start justify-between"><div><h3 className="uppercase text-sm font-medium text-slate-300">PLAN & TRACK</h3><h2 className="mt-1 text-xl font-bold text-white">Add Recurring Expense</h2></div><button className="text-slate-400 hover:text-white p-2 rounded-lg hover:bg-slate-800" onClick={() => setIsAddBillOpen(false)} aria-label="Close"><X size={18} /></button></div>
+          <div className="modal relative z-50 max-w-md w-full bg-white text-slate-900 border border-slate-200 rounded-2xl p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-start justify-between"><div><h3 className="text-xs font-semibold tracking-wider text-emerald-700 uppercase">PLAN & TRACK</h3><h2 className="mt-1 text-xl font-bold text-slate-900">Add Recurring Expense</h2></div><button className="text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg p-2 transition-colors" onClick={() => setIsAddBillOpen(false)} aria-label="Close"><X size={18} /></button></div>
             <div className="flex flex-col gap-4 mt-4">
-              <label className="flex flex-col gap-1.5 text-slate-300 text-sm font-medium">Service Name<input autoFocus className="modal-input" placeholder="e.g. Generator Fee" value={billForm.name} onChange={e => setBillForm({ ...billForm, name: e.target.value })} /></label>
-              <label className="flex flex-col gap-1.5 text-slate-300 text-sm font-medium">Billing Amount (IQD)<input type="number" className="modal-input" placeholder="0" value={billForm.amount} onChange={e => setBillForm({ ...billForm, amount: e.target.value })} /></label>
-              <div className="grid grid-cols-2 gap-4"><label className="flex flex-col gap-1.5 text-slate-300 text-sm font-medium">Due Date<input type="date" className="modal-input" value={billForm.due} onChange={e => setBillForm({ ...billForm, due: e.target.value })} /></label><label className="flex flex-col gap-1.5 text-slate-300 text-sm font-medium">Frequency<select className="modal-input" value={billForm.frequency} onChange={e => setBillForm({ ...billForm, frequency: e.target.value as BillForm['frequency'] })}><option>Monthly</option><option>Yearly</option></select></label></div>
+              <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-700 mb-1.5 block">Service Name<input autoFocus className="modal-input" placeholder="e.g. Generator Fee" value={billForm.name} onChange={e => setBillForm({ ...billForm, name: e.target.value })} /></label>
+              <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-700 mb-1.5 block">Billing Amount (IQD)<input type="number" className="modal-input" placeholder="0" value={billForm.amount} onChange={e => setBillForm({ ...billForm, amount: e.target.value })} /></label>
+              <div className="grid grid-cols-2 gap-4"><label className="flex flex-col gap-1.5 text-sm font-medium text-slate-700 mb-1.5 block">Due Date<input type="date" className="modal-input" value={billForm.due} onChange={e => setBillForm({ ...billForm, due: e.target.value })} /></label><label className="flex flex-col gap-1.5 text-sm font-medium text-slate-700 mb-1.5 block">Frequency<select className="modal-input" value={billForm.frequency} onChange={e => setBillForm({ ...billForm, frequency: e.target.value as BillForm['frequency'] })}><option>Monthly</option><option>Yearly</option></select></label></div>
               <button className="w-full py-3.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-medium" type="button" onClick={saveBill}>Save recurring expense</button>
             </div>
           </div>
