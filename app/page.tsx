@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -50,10 +50,9 @@ type HistoryEntry = {
 type SettingsSection = 'profile' | 'regional' | 'appearance' | 'data'
 type TransactionForm = { merchant: string; category: string; amount: string; date: string; type: 'Expense' | 'Income' }
 type BudgetForm = { name: string; limit: string; color: string }
-  type BillForm = { name: string; amount: string; due: string; frequency: 'Monthly' | 'Yearly' }
-  type Budget = { name: string; spent: number; limit: number; color: string }
-  type Bill = { name: string; due: string; amount: number; paid: boolean; frequency: 'Monthly' | 'Yearly' }
-
+type BillForm = { name: string; amount: string; due: string; frequency: 'Monthly' | 'Yearly' }
+type Budget = { name: string; spent: number; limit: number; color: string }
+type Bill = { name: string; due: string; amount: number; paid: boolean; frequency: 'Monthly' | 'Yearly' }
 
 const emptyBudgetForm: BudgetForm = { name: '', limit: '', color: 'bg-primary' }
 const emptyBillForm: BillForm = { name: '', amount: '', due: '2026-08-28', frequency: 'Monthly' }
@@ -87,29 +86,6 @@ const emptyForm: TransactionForm = {
   date: '2026-08-24',
   type: 'Expense',
 }
-
-const seed: Transaction[] = [
-  { id: 1, merchant: 'Carrefour', category: 'Groceries', date: '2026-08-22', amount: 84500, type: 'Expense' },
-  { id: 2, merchant: 'Zain Iraq', category: 'Utilities', date: '2026-08-20', amount: 35000, type: 'Expense' },
-  { id: 3, merchant: 'Bashar Electronics', category: 'Shopping', date: '2026-08-18', amount: 120000, type: 'Expense' },
-  { id: 4, merchant: 'Salary · August', category: 'Income', date: '2026-08-15', amount: 2850000, type: 'Income' },
-  { id: 5, merchant: 'Careem', category: 'Transport', date: '2026-08-13', amount: 18500, type: 'Expense' },
-  { id: 6, merchant: 'Shanashil Cafe', category: 'Dining', date: '2026-08-11', amount: 27000, type: 'Expense' },
-  { id: 7, merchant: 'Erbil Fitness', category: 'Health', date: '2026-08-07', amount: 75000, type: 'Expense' },
-]
-
-const seedBudgets: Budget[] = [
-  { name: 'Groceries', spent: 286500, limit: 400000, color: 'bg-primary' },
-  { name: 'Transport', spent: 148000, limit: 250000, color: 'bg-chart-2' },
-  { name: 'Dining', spent: 192500, limit: 300000, color: 'bg-chart-3' },
-  { name: 'Shopping', spent: 245000, limit: 500000, color: 'bg-chart-4' },
-]
-
-const seedBills: Bill[] = [
-  { name: 'Zain Iraq', due: 'Aug 28', amount: 35000, paid: false, frequency: 'Monthly' },
-  { name: 'Erbil Water', due: 'Sep 02', amount: 18000, paid: false, frequency: 'Monthly' },
-  { name: 'Netflix', due: 'Sep 05', amount: 16500, paid: true, frequency: 'Monthly' },
-]
 
 const icons: Record<string, React.ElementType> = {
   Overview: LayoutDashboard,
@@ -207,6 +183,7 @@ export default function Page() {
   const [bills, setBills] = useState<Bill[]>([])
   const [history, setHistory] = useState<HistoryEntry[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [historyFilter, setHistoryFilter] = useState<'All' | HistoryAction>('All')
   const [isAddTransactionOpen, setIsAddTransactionOpen] = useState(false)
@@ -228,11 +205,33 @@ export default function Page() {
   const [currencyFormat, setCurrencyFormat] = useState<'symbol' | 'code'>('symbol')
   const [startOfMonth, setStartOfMonth] = useState('1st of every month')
   const [themeChoice, setThemeChoice] = useState<(typeof themeOptions)[number]['id']>('light')
+    useEffect(() => {
+    const root = document.documentElement
+    const applyTheme = (isDark: boolean) => {
+      root.setAttribute('data-theme', isDark ? 'dark' : 'light')
+    }
+    if (themeChoice === 'system') {
+      const mq = window.matchMedia('(prefers-color-scheme: dark)')
+      applyTheme(mq.matches)
+      const listener = (e: MediaQueryListEvent) => applyTheme(e.matches)
+      mq.addEventListener('change', listener)
+      return () => mq.removeEventListener('change', listener)
+    }
+    applyTheme(themeChoice === 'dark')
+  }, [themeChoice])
   const [accentChoice, setAccentChoice] = useState<(typeof accentOptions)[number]['id']>('emerald')
   const [autoBackups, setAutoBackups] = useState(true)
   const [reduceMotion, setReduceMotion] = useState(false)
   const [lastSaved, setLastSaved] = useState('Unsaved changes')
+  const [now, setNow] = useState(() => new Date())
 
+  useEffect(() => {
+    const interval = setInterval(() => setNow(new Date()), 60000)
+    return () => clearInterval(interval)
+  }, [])
+
+  const greeting = now.getHours() < 12 ? 'Good morning' : now.getHours() < 18 ? 'Good afternoon' : 'Good evening'
+  const formattedDate = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
   const [periodA, setPeriodA] = useState({ label: 'This Month', start: getDefaultDateRange('This Month').start, end: getDefaultDateRange('This Month').end })
   const [periodB, setPeriodB] = useState({ label: 'Last Month', start: getDefaultDateRange('Last Month').start, end: getDefaultDateRange('Last Month').end })
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
@@ -305,13 +304,6 @@ export default function Page() {
   }, [selectedCategories])
 
   const comparisonData = useMemo(() => {
-    const setTotal = (range: { start: string; end: string }, set: string[]) => {
-      return set.reduce((total, category) => {
-        const sum = active.filter(t => t.category === category && t.type === 'Expense' && t.date >= range.start && t.date <= range.end).reduce((amount, item) => amount + item.amount, 0)
-        return total + sum
-      }, 0)
-    }
-
     const maxAmount = Math.max(
       ...comparisonCategories.map(category => {
         const a = active.filter(t => t.category === category && t.type === 'Expense' && t.date >= periodA.start && t.date <= periodA.end).reduce((sum, item) => sum + item.amount, 0)
@@ -373,6 +365,7 @@ export default function Page() {
       setBudgets(previous)
     }
   }
+
   const openBillModal = () => {
     setEditingBill(null)
     setBillForm(emptyBillForm)
@@ -427,7 +420,7 @@ export default function Page() {
     }
   }
 
-      const saveBill = async () => {
+  const saveBill = async () => {
     if (!billForm.name.trim() || !billForm.amount || Number(billForm.amount) <= 0 || !billForm.due) return
     try {
       if (editingBill) {
@@ -457,7 +450,7 @@ export default function Page() {
     }
   }
 
-    const toggleBillPaid = async (name: string) => {
+  const toggleBillPaid = async (name: string) => {
     const current = bills.find(bill => bill.name === name)
     if (!current) return
     const wasUnpaid = !current.paid
@@ -472,7 +465,6 @@ export default function Page() {
       if (!res.ok) throw new Error('Failed to update bill')
 
       if (wasUnpaid) {
-        // We just marked it paid — a transaction was created server-side, so refresh
         const [txRes, historyRes] = await Promise.all([fetch('/api/transactions'), fetch('/api/history')])
         const [txData, historyData] = await Promise.all([txRes.json(), historyRes.json()])
         if (Array.isArray(txData)) setTransactions(txData)
@@ -605,7 +597,6 @@ export default function Page() {
     }
   }
 
-
   const exportCsv = () => {
     const csv = ['Merchant,Category,Date,Amount,Type', ...active.map(t => `${t.merchant},${t.category},${t.date},${t.amount},${t.type}`)].join('\n')
     const a = document.createElement('a')
@@ -656,7 +647,7 @@ export default function Page() {
   }
 
   const nav = (label: View) => (
-    <motion.button whileTap={{ scale: 0.97 }} className={`nav-item ${view === label ? 'active' : ''}`} onClick={() => setView(label)}>
+    <motion.button whileTap={{ scale: 0.97 }} className={`nav-item ${view === label ? 'active' : ''}`} onClick={() => { setView(label); setIsSidebarOpen(false) }}>
       {view === label && <motion.span className="active-nav-indicator" layoutId="activeTab" transition={{ type: 'spring', stiffness: 420, damping: 34 }} />}
       {(() => { const Icon = icons[label]; return <Icon size={18} /> })()}
       <span>{label}</span>
@@ -675,7 +666,8 @@ export default function Page() {
 
   return (
     <main className="app-shell">
-      <aside className="sidebar">
+      {isSidebarOpen && <div className="sidebar-backdrop" onClick={() => setIsSidebarOpen(false)} />}
+      <aside className={`sidebar ${isSidebarOpen ? 'sidebar-open' : ''}`}>
         <div className="brand"><span className="brand-mark">L</span><span>ledgerly</span></div>
         <div className="nav-group">
           {nav('Overview')}
@@ -701,9 +693,11 @@ export default function Page() {
 
       <section className="canvas">
         <header className="topbar">
-          <button className="mobile-menu"><Menu size={20} /></button>
+          <button className="mobile-menu" onClick={() => setIsSidebarOpen(prev => !prev)} aria-label="Toggle menu">
+            <Menu size={20} />
+          </button>
           <div>
-            <p className="eyebrow">Monday, August 24, 2026</p>
+            <p className="eyebrow">{formattedDate}</p>
             <h1>{view}</h1>
           </div>
           <div className="top-actions">
@@ -720,7 +714,7 @@ export default function Page() {
                   <div className="welcome">
                     <div>
                       <p className="eyebrow">Your financial snapshot</p>
-                      <h2>Good morning, Zanko.</h2>
+                      <h2>{greeting}, Zanko.</h2>
                       <p>Here&apos;s how your money is moving this month.</p>
                     </div>
                     <div className="month-pill"><CalendarDays size={16} /> August 2026 <ChevronDown size={15} /></div>
@@ -862,10 +856,10 @@ export default function Page() {
                         <div className="bill-icon"><CreditCard size={18} /></div>
                         <div className="bill-info"><strong>{b.name}</strong><small>Due {new Date(`${b.due}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: '2-digit' })}</small></div>
                         <strong>{money(b.amount)}</strong>
-                                                <button type="button" className={`status ${b.paid ? 'paid' : ''}`} onClick={() => toggleBillPaid(b.name)}><Check size={14} /> {b.paid ? 'Paid' : 'Mark paid'}</button>
+                        <button type="button" className={`status ${b.paid ? 'paid' : ''}`} onClick={() => toggleBillPaid(b.name)}><Check size={14} /> {b.paid ? 'Paid' : 'Mark paid'}</button>
                         <button type="button" className="row-action" aria-label={`Edit ${b.name}`} onClick={() => openEditBill(b)}><Pencil size={15} /></button>
                         <button type="button" className="row-action" aria-label={`Delete ${b.name}`} onClick={() => deleteBill(b.name)}><Trash2 size={15} /></button>
-                        </div>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -1316,7 +1310,7 @@ function TransactionList({ rows, onDelete, onEdit, onRestore, onPermanentDelete 
           {onEdit && <button className="row-action" aria-label="Edit" onClick={() => onEdit(t.id)}><Pencil size={15} /></button>}
           {onDelete && <button className="row-action" aria-label="Delete" onClick={() => onDelete(t.id)}><Trash2 size={15} /></button>}
           {onRestore && <button className="row-action" aria-label="Restore" onClick={() => onRestore(t.id)}><RotateCcw size={15} /></button>}
-  {onPermanentDelete && <button className="row-action destructive" aria-label="Permanently delete" onClick={() => onPermanentDelete(t.id)}><Trash2 size={15} /></button>}
+          {onPermanentDelete && <button className="row-action destructive" aria-label="Permanently delete" onClick={() => onPermanentDelete(t.id)}><Trash2 size={15} /></button>}
         </motion.div>
       ))}
     </motion.div>

@@ -27,9 +27,9 @@ export async function middleware(req: NextRequest) {
   const isLoggedIn = session.isLoggedIn === true
   const lastActive = session.lastActive ?? 0
   const inactiveMs = Date.now() - lastActive
-  const EIGHT_HOURS = 8 * 60 * 60 * 1000
-
-  const valid = isLoggedIn && inactiveMs < EIGHT_HOURS
+  const THIRTY_MINUTES = 30 * 60 * 1000
+  
+  const valid = isLoggedIn && inactiveMs < THIRTY_MINUTES
 
   if (!valid) {
     // Protect page routes by redirecting; protect API routes with a 401

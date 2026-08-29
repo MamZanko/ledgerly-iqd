@@ -19,7 +19,7 @@ const sessionOptions = {
   },
 }
 
-const INACTIVITY_LIMIT_MS = 8 * 60 * 60 * 1000 // 8 hours
+const INACTIVITY_LIMIT_MS = 30 * 60 * 1000 // 30 minutes
 
 export async function getSession(): Promise<IronSession<SessionData>> {
   const cookieStore = await cookies()
