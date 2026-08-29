@@ -1,6 +1,7 @@
 ﻿'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   AlertTriangle,
@@ -199,14 +200,13 @@ function SettingsSwitch({ checked, onClick, label, description }: { checked: boo
 }
 
 export default function Page() {
+  const router = useRouter()
   const [view, setView] = useState<View>('Overview')
-  const [transactions, setTransactions] = useState(seed)
-  const [budgets, setBudgets] = useState<Budget[]>(seedBudgets)
-  const [bills, setBills] = useState<Bill[]>(seedBills)
-  const [history, setHistory] = useState<HistoryEntry[]>([
-    { id: 1, transactionId: 1, action: 'created', changedFields: { merchant: { old: '', new: 'Carrefour' }, amount: { old: 0, new: 84500 } }, timestamp: '2026-08-23T09:25:00.000Z' },
-    { id: 2, transactionId: 4, action: 'created', changedFields: { merchant: { old: '', new: 'Salary · August' }, amount: { old: 0, new: 2850000 } }, timestamp: '2026-08-18T08:30:00.000Z' },
-  ])
+  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [budgets, setBudgets] = useState<Budget[]>([])
+  const [bills, setBills] = useState<Bill[]>([])
+  const [history, setHistory] = useState<HistoryEntry[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const [query, setQuery] = useState('')
   const [historyFilter, setHistoryFilter] = useState<'All' | HistoryAction>('All')
   const [isAddTransactionOpen, setIsAddTransactionOpen] = useState(false)
@@ -220,6 +220,7 @@ export default function Page() {
   const [form, setForm] = useState<TransactionForm>(emptyForm)
   const [budgetForm, setBudgetForm] = useState<BudgetForm>(emptyBudgetForm)
   const [billForm, setBillForm] = useState<BillForm>(emptyBillForm)
+  const [editingBill, setEditingBill] = useState<string | null>(null)
   const [merchantQuery, setMerchantQuery] = useState('')
   const [categoryQuery, setCategoryQuery] = useState('')
   const [settingsSection, setSettingsSection] = useState<SettingsSection>('profile')
@@ -243,6 +244,40 @@ export default function Page() {
       return () => window.removeEventListener('afterprint', handleAfterPrint)
     }
   }, [])
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [txRes, budgetRes, billRes, historyRes] = await Promise.all([
+          fetch('/api/transactions'),
+          fetch('/api/budgets'),
+          fetch('/api/bills'),
+          fetch('/api/history'),
+        ])
+        const [txData, budgetData, billData, historyData] = await Promise.all([
+          txRes.json(),
+          budgetRes.json(),
+          billRes.json(),
+          historyRes.json(),
+        ])
+        setTransactions(Array.isArray(txData) ? txData : [])
+        setBudgets(Array.isArray(budgetData) ? budgetData : [])
+        setBills(Array.isArray(billData) ? billData : [])
+        setHistory(Array.isArray(historyData) ? historyData : [])
+      } catch (err) {
+        console.error('Failed to load data', err)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    loadData()
+  }, [])
+
+  async function handleLogout() {
+    await fetch('/api/logout', { method: 'POST' })
+    router.push('/login')
+    router.refresh()
+  }
 
   const active = useMemo(() => transactions.filter(t => !t.deleted), [transactions])
   const filtered = useMemo(() => active.filter(t => `${t.merchant} ${t.category}`.toLowerCase().includes(query.toLowerCase())), [active, query])
@@ -326,34 +361,128 @@ export default function Page() {
     setIsAddBudgetOpen(true)
   }
 
-  const deleteBudget = (name: string) => {
-    setBudgets(prev => prev.filter(budget => budget.name !== name))
+  const deleteBudget = async (name: string) => {
     setBudgetMenu(null)
+    const previous = budgets
+    setBudgets(prev => prev.filter(budget => budget.name !== name))
+    try {
+      const res = await fetch(`/api/budgets/${encodeURIComponent(name)}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Failed to delete budget')
+    } catch (err) {
+      console.error(err)
+      setBudgets(previous)
+    }
   }
-
   const openBillModal = () => {
+    setEditingBill(null)
     setBillForm(emptyBillForm)
     setIsAddBillOpen(true)
   }
 
-  const saveBudget = () => {
+  const openEditBill = (bill: Bill) => {
+    setEditingBill(bill.name)
+    setBillForm({ name: bill.name, amount: String(bill.amount), due: bill.due, frequency: bill.frequency })
+    setIsAddBillOpen(true)
+  }
+
+  const deleteBill = async (name: string) => {
+    const previous = bills
+    setBills(prev => prev.filter(bill => bill.name !== name))
+    try {
+      const res = await fetch(`/api/bills/${encodeURIComponent(name)}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Failed to delete bill')
+    } catch (err) {
+      console.error(err)
+      setBills(previous)
+    }
+  }
+
+  const saveBudget = async () => {
     if (!budgetForm.name.trim() || !budgetForm.limit || Number(budgetForm.limit) <= 0) return
-    setBudgets(prev => editingBudget
-      ? prev.map(budget => budget.name === editingBudget ? { ...budget, name: budgetForm.name.trim(), limit: Number(budgetForm.limit), color: budgetForm.color } : budget)
-      : [...prev, { name: budgetForm.name.trim(), spent: 0, limit: Number(budgetForm.limit), color: budgetForm.color }])
-    setIsAddBudgetOpen(false)
-    setBudgetForm(emptyBudgetForm)
-    setEditingBudget(null)
+    try {
+      if (editingBudget) {
+        const res = await fetch(`/api/budgets/${encodeURIComponent(editingBudget)}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: budgetForm.name.trim(), limit: Number(budgetForm.limit), color: budgetForm.color }),
+        })
+        if (!res.ok) throw new Error('Failed to update budget')
+        const updated = await res.json()
+        setBudgets(prev => prev.map(budget => budget.name === editingBudget ? updated : budget))
+      } else {
+        const res = await fetch('/api/budgets', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: budgetForm.name.trim(), limit: Number(budgetForm.limit), color: budgetForm.color }),
+        })
+        if (!res.ok) throw new Error('Failed to create budget')
+        const created = await res.json()
+        setBudgets(prev => [...prev, created])
+      }
+      setIsAddBudgetOpen(false)
+      setBudgetForm(emptyBudgetForm)
+      setEditingBudget(null)
+    } catch (err) {
+      console.error(err)
+    }
   }
 
-  const saveBill = () => {
+      const saveBill = async () => {
     if (!billForm.name.trim() || !billForm.amount || Number(billForm.amount) <= 0 || !billForm.due) return
-    setBills(prev => [...prev, { name: billForm.name.trim(), amount: Number(billForm.amount), due: new Date(`${billForm.due}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: '2-digit' }), paid: false, frequency: billForm.frequency }])
-    setIsAddBillOpen(false)
-    setBillForm(emptyBillForm)
+    try {
+      if (editingBill) {
+        const res = await fetch(`/api/bills/${encodeURIComponent(editingBill)}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: billForm.name.trim(), amount: Number(billForm.amount), due: billForm.due, frequency: billForm.frequency }),
+        })
+        if (!res.ok) throw new Error('Failed to update bill')
+        const updated = await res.json()
+        setBills(prev => prev.map(bill => bill.name === editingBill ? updated : bill))
+      } else {
+        const res = await fetch('/api/bills', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: billForm.name.trim(), amount: Number(billForm.amount), due: billForm.due, frequency: billForm.frequency }),
+        })
+        if (!res.ok) throw new Error('Failed to create bill')
+        const created = await res.json()
+        setBills(prev => [...prev, created])
+      }
+      setIsAddBillOpen(false)
+      setBillForm(emptyBillForm)
+      setEditingBill(null)
+    } catch (err) {
+      console.error(err)
+    }
   }
 
-  const toggleBillPaid = (name: string) => setBills(prev => prev.map(bill => bill.name === name ? { ...bill, paid: !bill.paid } : bill))
+    const toggleBillPaid = async (name: string) => {
+    const current = bills.find(bill => bill.name === name)
+    if (!current) return
+    const wasUnpaid = !current.paid
+    const previous = bills
+    setBills(prev => prev.map(bill => bill.name === name ? { ...bill, paid: !bill.paid } : bill))
+    try {
+      const res = await fetch(`/api/bills/${encodeURIComponent(name)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paid: wasUnpaid }),
+      })
+      if (!res.ok) throw new Error('Failed to update bill')
+
+      if (wasUnpaid) {
+        // We just marked it paid — a transaction was created server-side, so refresh
+        const [txRes, historyRes] = await Promise.all([fetch('/api/transactions'), fetch('/api/history')])
+        const [txData, historyData] = await Promise.all([txRes.json(), historyRes.json()])
+        if (Array.isArray(txData)) setTransactions(txData)
+        if (Array.isArray(historyData)) setHistory(historyData)
+      }
+    } catch (err) {
+      console.error(err)
+      setBills(previous)
+    }
+  }
 
   const openEditModal = (id: number) => {
     const transaction = transactions.find(t => t.id === id)
@@ -372,72 +501,108 @@ export default function Page() {
     setIsAddTransactionOpen(true)
   }
 
-  const logHistory = (transactionId: number, action: HistoryAction, changedFields: Record<string, { old: any; new: any }> | null = null) => {
-    setHistory(prev => [{ id: Date.now() + transactionId, transactionId, action, changedFields, timestamp: new Date().toISOString() }, ...prev])
+  const refreshHistory = async () => {
+    try {
+      const res = await fetch('/api/history')
+      const data = await res.json()
+      if (Array.isArray(data)) setHistory(data)
+    } catch (err) {
+      console.error('Failed to refresh history', err)
+    }
   }
 
-  const addTransaction = () => {
+  const addTransaction = async () => {
     if (!form.merchant.trim() || !form.amount || Number(form.amount) <= 0) return
-    const nextTransaction: Transaction = {
-      ...form,
-      id: Date.now(),
-      merchant: form.merchant.trim(),
-      amount: Number(form.amount),
+    try {
+      const res = await fetch('/api/transactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          merchant: form.merchant.trim(),
+          category: form.category,
+          amount: Number(form.amount),
+          date: form.date,
+          type: form.type,
+        }),
+      })
+      if (!res.ok) throw new Error('Failed to create transaction')
+      const created = await res.json()
+      setTransactions(prev => [created, ...prev])
+      await refreshHistory()
+      resetModal()
+    } catch (err) {
+      console.error(err)
     }
-    setTransactions(prev => [nextTransaction, ...prev])
-    logHistory(nextTransaction.id, 'created', {
-      merchant: { old: '', new: nextTransaction.merchant },
-      category: { old: '', new: nextTransaction.category },
-      amount: { old: 0, new: nextTransaction.amount },
-      date: { old: '', new: nextTransaction.date },
-      type: { old: '', new: nextTransaction.type },
-    })
-    resetModal()
   }
 
-  const saveTransaction = () => {
+  const saveTransaction = async () => {
     if (editingId === null || !form.merchant.trim() || !form.amount || Number(form.amount) <= 0) return
-    const previous = transactions.find(t => t.id === editingId)
-    if (!previous) return
-
-    const next: Transaction = {
-      ...previous,
-      merchant: form.merchant.trim(),
-      category: form.category,
-      amount: Number(form.amount),
-      date: form.date,
-      type: form.type,
+    try {
+      const res = await fetch(`/api/transactions/${editingId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          merchant: form.merchant.trim(),
+          category: form.category,
+          amount: Number(form.amount),
+          date: form.date,
+          type: form.type,
+        }),
+      })
+      if (!res.ok) throw new Error('Failed to update transaction')
+      const updated = await res.json()
+      setTransactions(prev => prev.map(t => t.id === editingId ? updated : t))
+      await refreshHistory()
+      resetModal()
+    } catch (err) {
+      console.error(err)
     }
-    const changedFields: Record<string, { old: any; new: any }> = {}
-    ;(['merchant', 'category', 'amount', 'date', 'type'] as const).forEach(key => {
-      const oldValue = previous[key]
-      const newValue = next[key]
-      if (oldValue !== newValue) changedFields[key] = { old: oldValue, new: newValue }
-    })
-
-    setTransactions(prev => prev.map(t => t.id === editingId ? next : t))
-    logHistory(editingId, 'edited', Object.keys(changedFields).length ? changedFields : null)
-    resetModal()
   }
 
-  const softDeleteTransaction = (id: number) => {
+  const softDeleteTransaction = async (id: number) => {
     const item = transactions.find(t => t.id === id)
     if (!item) return
     setTransactions(prev => prev.map(t => t.id === id ? { ...t, deleted: true } : t))
-    logHistory(id, 'deleted', {
-      merchant: { old: item.merchant, new: item.merchant },
-      category: { old: item.category, new: item.category },
-      amount: { old: item.amount, new: item.amount },
-    })
+    try {
+      const res = await fetch(`/api/transactions/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete' }),
+      })
+      if (!res.ok) throw new Error('Failed to delete transaction')
+      await refreshHistory()
+    } catch (err) {
+      console.error(err)
+      setTransactions(prev => prev.map(t => t.id === id ? { ...t, deleted: false } : t))
+    }
   }
 
-  const restoreTransaction = (id: number) => {
+  const restoreTransaction = async (id: number) => {
     setTransactions(prev => prev.map(t => t.id === id ? { ...t, deleted: false } : t))
-    logHistory(id, 'restored')
+    try {
+      const res = await fetch(`/api/transactions/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'restore' }),
+      })
+      if (!res.ok) throw new Error('Failed to restore transaction')
+      await refreshHistory()
+    } catch (err) {
+      console.error(err)
+      setTransactions(prev => prev.map(t => t.id === id ? { ...t, deleted: true } : t))
+    }
   }
 
-  const permanentlyDeleteTransaction = (id: number) => {
+  const permanentlyDeleteTransaction = async (id: number) => {
+    const previous = transactions
     setTransactions(prev => prev.filter(t => t.id !== id))
+    try {
+      const res = await fetch(`/api/transactions/${id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Failed to permanently delete transaction')
+    } catch (err) {
+      console.error(err)
+      setTransactions(previous)
+    }
   }
 
 
@@ -497,6 +662,16 @@ export default function Page() {
       <span>{label}</span>
     </motion.button>
   )
+
+  if (isLoading) {
+    return (
+      <main className="app-shell">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', width: '100%' }}>
+          <p style={{ color: '#64748b', fontSize: 14 }}>Loading your data…</p>
+        </div>
+      </main>
+    )
+  }
 
   return (
     <main className="app-shell">
@@ -685,10 +860,12 @@ export default function Page() {
                     {bills.map(b => (
                       <div className="bill-row" key={b.name}>
                         <div className="bill-icon"><CreditCard size={18} /></div>
-                        <div className="bill-info"><strong>{b.name}</strong><small>Due {b.due}</small></div>
+                        <div className="bill-info"><strong>{b.name}</strong><small>Due {new Date(`${b.due}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: '2-digit' })}</small></div>
                         <strong>{money(b.amount)}</strong>
-                        <button type="button" className={`status ${b.paid ? 'paid' : ''}`} onClick={() => toggleBillPaid(b.name)}><Check size={14} /> {b.paid ? 'Paid' : 'Mark paid'}</button>
-                      </div>
+                                                <button type="button" className={`status ${b.paid ? 'paid' : ''}`} onClick={() => toggleBillPaid(b.name)}><Check size={14} /> {b.paid ? 'Paid' : 'Mark paid'}</button>
+                        <button type="button" className="row-action" aria-label={`Edit ${b.name}`} onClick={() => openEditBill(b)}><Pencil size={15} /></button>
+                        <button type="button" className="row-action" aria-label={`Delete ${b.name}`} onClick={() => deleteBill(b.name)}><Trash2 size={15} /></button>
+                        </div>
                     ))}
                   </div>
                 </div>
@@ -967,7 +1144,8 @@ export default function Page() {
                         <div className="data-actions">
                           <button className="primary-button" type="button" onClick={exportAllData}><FileSpreadsheet size={16} /> Export All Financial Data <span>CSV / JSON</span></button>
                           <button className="primary-button" type="button" onClick={exportPdf}><Download size={16} /> Export as PDF</button>
-                          <button className="outline-button destructive" type="button" onClick={() => { setTransactions(seed); setHistory([]); resetPreferences() }}><AlertTriangle size={16} /> Clear Cache / Reset Mock Data</button>
+                          <button className="outline-button destructive" type="button" onClick={resetPreferences}><AlertTriangle size={16} /> Reset Preferences</button>
+                          <button className="outline-button destructive" type="button" onClick={handleLogout}><AlertTriangle size={16} /> Log out</button>
                         </div>
                         <SettingsSwitch checked={autoBackups} onClick={() => setAutoBackups(!autoBackups)} label="Auto backups" description="Keep a local backup copy when you export data." />
                       </div>
@@ -1073,12 +1251,12 @@ export default function Page() {
       {isAddBillOpen && (
         <div className="modal-backdrop" onClick={() => setIsAddBillOpen(false)}>
           <div className="modal relative z-50 max-w-md w-full bg-white text-slate-900 border border-slate-200 rounded-2xl p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
-            <div className="flex items-start justify-between"><div><h3 className="text-xs font-semibold tracking-wider text-emerald-700 uppercase">PLAN & TRACK</h3><h2 className="mt-1 text-xl font-bold text-slate-900">Add Recurring Expense</h2></div><button className="text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg p-2 transition-colors" onClick={() => setIsAddBillOpen(false)} aria-label="Close"><X size={18} /></button></div>
+            <div className="flex items-start justify-between"><div><h3 className="text-xs font-semibold tracking-wider text-emerald-700 uppercase">PLAN & TRACK</h3><h2 className="mt-1 text-xl font-bold text-slate-900">{editingBill ? 'Edit Recurring Expense' : 'Add Recurring Expense'}</h2></div><button className="text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg p-2 transition-colors" onClick={() => setIsAddBillOpen(false)} aria-label="Close"><X size={18} /></button></div>
             <div className="flex flex-col gap-4 mt-4">
               <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-700 mb-1.5 block">Service Name<input autoFocus className="modal-input" placeholder="e.g. Generator Fee" value={billForm.name} onChange={e => setBillForm({ ...billForm, name: e.target.value })} /></label>
               <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-700 mb-1.5 block">Billing Amount (IQD)<input type="number" className="modal-input" placeholder="0" value={billForm.amount} onChange={e => setBillForm({ ...billForm, amount: e.target.value })} /></label>
               <div className="grid grid-cols-2 gap-4"><label className="flex flex-col gap-1.5 text-sm font-medium text-slate-700 mb-1.5 block">Due Date<input type="date" className="modal-input" value={billForm.due} onChange={e => setBillForm({ ...billForm, due: e.target.value })} /></label><label className="flex flex-col gap-1.5 text-sm font-medium text-slate-700 mb-1.5 block">Frequency<select className="modal-input" value={billForm.frequency} onChange={e => setBillForm({ ...billForm, frequency: e.target.value as BillForm['frequency'] })}><option>Monthly</option><option>Yearly</option></select></label></div>
-              <button className="w-full py-3.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-medium" type="button" onClick={saveBill}>Save recurring expense</button>
+              <button className="w-full py-3.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-medium" type="button" onClick={saveBill}>{editingBill ? 'Save changes' : 'Save recurring expense'}</button>
             </div>
           </div>
         </div>
