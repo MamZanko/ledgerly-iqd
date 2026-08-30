@@ -51,6 +51,9 @@ export async function POST(req: NextRequest) {
     return invalidResponse()
   }
 
+  const now = new Date().toISOString()
+  await supabase.from('admin_user').update({ last_login_at: now }).eq('username', user.username)
+
   const session = await getSession()
   session.isLoggedIn = true
   session.username = user.username

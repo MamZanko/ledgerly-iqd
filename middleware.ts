@@ -25,11 +25,10 @@ export async function middleware(req: NextRequest) {
   const session = await getIronSession<SessionData>(req, res, sessionOptions)
 
   const isLoggedIn = session.isLoggedIn === true
-  const lastActive = session.lastActive ?? 0
-  const inactiveMs = Date.now() - lastActive
   const THIRTY_MINUTES = 30 * 60 * 1000
 
-  let versionValid = true
+  let valid = false
+
   if (isLoggedIn && session.username) {
     try {
       const supabase = createClient(
@@ -39,20 +38,19 @@ export async function middleware(req: NextRequest) {
       )
       const { data } = await supabase
         .from('admin_user')
-        .select('session_version')
+        .select('session_version, last_login_at')
         .eq('username', session.username)
         .single()
 
-      if (data && data.session_version !== session.sessionVersion) {
-        versionValid = false
+      if (data) {
+        const versionMatches = data.session_version === session.sessionVersion
+        const loginAge = data.last_login_at ? Date.now() - new Date(data.last_login_at).getTime() : Infinity
+        valid = versionMatches && loginAge < THIRTY_MINUTES
       }
     } catch {
-      // If the check itself fails, don't lock the person out over a network hiccup
-      versionValid = true
+      valid = false
     }
   }
-
-  const valid = isLoggedIn && inactiveMs < THIRTY_MINUTES && versionValid
 
   if (!valid) {
     if (pathname.startsWith('/api')) {
