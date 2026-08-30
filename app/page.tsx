@@ -71,6 +71,7 @@ const themeOptions = [
 ] as const
 
 const accentOptions = [
+  { id: 'classic', label: 'Classic Green', value: '#226b59' },
   { id: 'indigo', label: 'Indigo', value: '#4f46e5' },
   { id: 'emerald', label: 'Emerald', value: '#10b981' },
   { id: 'teal', label: 'Teal', value: '#14b8a6' },
@@ -220,7 +221,7 @@ export default function Page() {
     }
     applyTheme(themeChoice === 'dark')
   }, [themeChoice])
-  const [accentChoice, setAccentChoice] = useState<(typeof accentOptions)[number]['id']>('emerald')
+  const [accentChoice, setAccentChoice] = useState<(typeof accentOptions)[number]['id']>('classic')
     useEffect(() => {
     const selected = accentOptions.find(o => o.id === accentChoice)
     if (selected) {
