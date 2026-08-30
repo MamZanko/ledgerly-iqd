@@ -5,6 +5,7 @@ export interface SessionData {
   isLoggedIn: boolean
   username?: string
   lastActive?: number
+  sessionVersion?: number
 }
 
 const sessionOptions = {

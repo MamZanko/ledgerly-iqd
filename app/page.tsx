@@ -289,6 +289,12 @@ export default function Page() {
     router.refresh()
   }
 
+    async function handleLogoutEverywhere() {
+    await fetch('/api/logout-everywhere', { method: 'POST' })
+    router.push('/login')
+    router.refresh()
+  }
+
   const active = useMemo(() => transactions.filter(t => !t.deleted), [transactions])
   const filtered = useMemo(() => active.filter(t => `${t.merchant} ${t.category}`.toLowerCase().includes(query.toLowerCase())), [active, query])
   const income = active.filter(t => t.type === 'Income').reduce((a, t) => a + t.amount, 0)
@@ -1167,6 +1173,7 @@ export default function Page() {
                           <button className="primary-button" type="button" onClick={exportPdf}><Download size={16} /> Export as PDF</button>
                           <button className="outline-button destructive" type="button" onClick={resetPreferences}><AlertTriangle size={16} /> Reset Preferences</button>
                           <button className="outline-button destructive" type="button" onClick={handleLogout}><AlertTriangle size={16} /> Log out</button>
+                          <button className="outline-button destructive" type="button" onClick={handleLogoutEverywhere}><AlertTriangle size={16} /> Log out everywhere</button>
                         </div>
                         <SettingsSwitch checked={autoBackups} onClick={() => setAutoBackups(!autoBackups)} label="Auto backups" description="Keep a local backup copy when you export data." />
                       </div>

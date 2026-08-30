@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
 
   const { data: user, error } = await supabase
     .from('admin_user')
-    .select('username, password_hash, totp_secret')
+    .select('username, password_hash, totp_secret, session_version')
     .eq('username', username)
     .single()
 
@@ -55,6 +55,7 @@ export async function POST(req: NextRequest) {
   session.isLoggedIn = true
   session.username = user.username
   session.lastActive = Date.now()
+  session.sessionVersion = user.session_version
   await session.save()
 
   return NextResponse.json({ success: true })
