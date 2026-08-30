@@ -4,32 +4,41 @@ import './globals.css'
 
 export const metadata: Metadata = {
   title: 'Ledgerly — Personal finance, made clear',
-  description: 'A calm, focused workspace for tracking your money in Iraqi Dinar.',
+  description:
+    'A calm, focused workspace for tracking your money in Iraqi Dinar.',
   generator: 'v0.app',
+
   icons: {
     icon: [
       {
-        url: '/icon-light-32x32.png',
-        media: '(prefers-color-scheme: light)',
+        url: '/favicon.ico',
       },
       {
-        url: '/icon-dark-32x32.png',
-        media: '(prefers-color-scheme: dark)',
+        url: '/icon-192.png',
+        sizes: '192x192',
+        type: 'image/png',
       },
       {
-        url: '/icon.svg',
-        type: 'image/svg+xml',
+        url: '/icon-512.png',
+        sizes: '512x512',
+        type: 'image/png',
       },
     ],
-    apple: '/apple-icon.png',
+    apple: '/icon-180.png',
   },
 }
 
 export const viewport: Viewport = {
   colorScheme: 'light dark',
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: 'white' },
-    { media: '(prefers-color-scheme: dark)', color: 'black' },
+    {
+      media: '(prefers-color-scheme: light)',
+      color: '#226b59',
+    },
+    {
+      media: '(prefers-color-scheme: dark)',
+      color: '#226b59',
+    },
   ],
 }
 
