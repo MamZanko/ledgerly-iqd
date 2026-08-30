@@ -65,6 +65,88 @@
   background: var(--card);
 }
 
+[data-theme='dark'] .chart {
+  background: linear-gradient(180deg, #16233a 0%, var(--card) 70%);
+}
+[data-theme='dark'] .bar-stack {
+  background: linear-gradient(180deg, #16233a 0%, var(--card) 100%);
+}
+[data-theme='dark'] .period-box {
+  background: #16233a;
+}
+[data-theme='dark'] .form input,
+[data-theme='dark'] .form select,
+[data-theme='dark'] .settings-field input,
+[data-theme='dark'] .settings-field select,
+[data-theme='dark'] .range-fields input,
+[data-theme='dark'] input[type="date"],
+[data-theme='dark'] .search input {
+  background: var(--muted);
+  color: var(--foreground);
+  border-color: var(--border);
+}
+[data-theme='dark'] input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+}
+[data-theme='dark'] .settings-nav,
+[data-theme='dark'] .settings-card,
+[data-theme='dark'] .settings-hero,
+[data-theme='dark'] .settings-actions,
+[data-theme='dark'] .avatar-panel,
+[data-theme='dark'] .role-row,
+[data-theme='dark'] .currency-lock {
+  background: var(--card);
+  border-color: var(--border);
+}
+[data-theme='dark'] .modal-input {
+  background: var(--muted);
+  color: var(--foreground);
+  border-color: var(--border);
+}
+[data-theme='dark'] .modal-input::placeholder {
+  color: var(--muted-foreground);
+}
+
+[data-theme='dark'] .modal-backdrop .bg-white {
+  background: var(--card) !important;
+}
+[data-theme='dark'] .modal-backdrop .text-slate-900 {
+  color: var(--foreground) !important;
+}
+[data-theme='dark'] .modal-backdrop .border-slate-200 {
+  border-color: var(--border) !important;
+}
+[data-theme='dark'] .modal-backdrop .bg-slate-50 {
+  background: var(--muted) !important;
+}
+[data-theme='dark'] .modal-backdrop .text-slate-300 {
+  color: var(--muted-foreground) !important;
+}
+[data-theme='dark'] .modal-backdrop .placeholder\:text-slate-400::placeholder {
+  color: var(--muted-foreground) !important;
+}
+[data-theme='dark'] .modal-backdrop .text-slate-400 {
+  color: var(--muted-foreground) !important;
+}
+[data-theme='dark'] .modal-backdrop .hover\:text-slate-700:hover {
+  color: var(--foreground) !important;
+}
+[data-theme='dark'] .modal-backdrop .hover\:bg-slate-100:hover {
+  background: var(--muted) !important;
+}
+[data-theme='dark'] .modal-backdrop .bg-slate-100 {
+  background: var(--muted) !important;
+}
+[data-theme='dark'] .modal-backdrop .text-slate-500 {
+  color: var(--muted-foreground) !important;
+}
+[data-theme='dark'] .modal-backdrop .bg-slate-800 {
+  background: var(--card) !important;
+}
+[data-theme='dark'] .modal-backdrop .border-slate-700 {
+  border-color: var(--border) !important;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

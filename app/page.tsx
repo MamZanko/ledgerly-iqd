@@ -872,7 +872,7 @@ export default function Page() {
                       <SectionTitle title="Where your money goes" />
                       <div className="donut"><div><strong>{money(spent)}</strong><small>total spend</small></div></div>
                       <div className="legend">
-                        {budgets.map(b => <span key={b.name}><i className={b.color} />{b.name}<b>{Math.round((b.spent / spent) * 100)}%</b></span>)}
+                        {budgets.map(b => <span key={b.name}><i className={b.color} />{b.name}<b>{spent > 0 ? Math.round((b.spent / spent) * 100) : 0}%</b></span>)}
                       </div>
                     </div>
 
