@@ -202,6 +202,7 @@ export default function Page() {
   const [categoryQuery, setCategoryQuery] = useState('')
   const [settingsSection, setSettingsSection] = useState<SettingsSection>('profile')
   const [displayName, setDisplayName] = useState('Zanko Muhammad')
+    const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [currencyFormat, setCurrencyFormat] = useState<'symbol' | 'code'>('symbol')
   const [startOfMonth, setStartOfMonth] = useState('1st of every month')
   const [themeChoice, setThemeChoice] = useState<(typeof themeOptions)[number]['id']>('light')
@@ -220,8 +221,17 @@ export default function Page() {
     applyTheme(themeChoice === 'dark')
   }, [themeChoice])
   const [accentChoice, setAccentChoice] = useState<(typeof accentOptions)[number]['id']>('emerald')
+    useEffect(() => {
+    const selected = accentOptions.find(o => o.id === accentChoice)
+    if (selected) {
+      document.documentElement.style.setProperty('--primary', selected.value)
+    }
+  }, [accentChoice])
   const [autoBackups, setAutoBackups] = useState(true)
   const [reduceMotion, setReduceMotion] = useState(false)
+    useEffect(() => {
+    document.documentElement.setAttribute('data-reduce-motion', reduceMotion ? 'true' : 'false')
+  }, [reduceMotion])
   const [lastSaved, setLastSaved] = useState('Unsaved changes')
   const [now, setNow] = useState(() => new Date())
 
@@ -685,7 +695,7 @@ export default function Page() {
           {nav('Trash')}
         </div>
         <div className="sidebar-footer">
-          <div className="avatar">ZM</div>
+          <div className="avatar" style={avatarUrl ? { backgroundImage: `url(${avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center', color: 'transparent' } : undefined}>ZM</div>
           <div><strong>Zanko Muhammad</strong><small>Personal account</small></div>
           <ChevronDown size={15} />
         </div>
@@ -1047,14 +1057,30 @@ export default function Page() {
                       </div>
                       <div className="profile-grid">
                         <div className="avatar-panel">
-                          <div className="avatar avatar-large">ZM</div>
+                          <div className="avatar avatar-large" style={avatarUrl ? { backgroundImage: `url(${avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center', color: 'transparent' } : undefined}>ZM</div>
                           <div>
                             <strong>Zanko Muhammad</strong>
                             <p>Profile photo and name for reports, exports, and account history.</p>
                           </div>
                           <div className="avatar-actions">
-                            <button className="primary-button" type="button"><Upload size={16} /> Upload Photo</button>
-                            <button className="outline-button" type="button">Change Avatar</button>
+                            <label className="primary-button" style={{ cursor: 'pointer' }}>
+                              <Upload size={16} /> Upload Photo
+                              <input
+                                type="file"
+                                accept="image/*"
+                                style={{ display: 'none' }}
+                                onChange={e => {
+                                  const file = e.target.files?.[0]
+                                  if (!file) return
+                                  const reader = new FileReader()
+                                  reader.onload = () => setAvatarUrl(reader.result as string)
+                                  reader.readAsDataURL(file)
+                                }}
+                              />
+                            </label>
+                            {avatarUrl && (
+                              <button className="outline-button" type="button" onClick={() => setAvatarUrl(null)}>Remove Photo</button>
+                            )}
                           </div>
                         </div>
                         <div className="settings-field-grid">
@@ -1259,12 +1285,64 @@ export default function Page() {
       {showPrintSummary && (
         <div className="print-summary visible-print">
           <div className="print-sheet">
-            <h2>Ledgerly Summary</h2>
-            <p className="print-meta">Report date: {new Date().toLocaleDateString()}</p>
-            <div className="print-totals">
-              <div><span>Total spent</span><strong>{money(spent)}</strong></div>
-              <div><span>Total income</span><strong>{money(income)}</strong></div>
+            <div className="print-header">
+              <div className="print-brand"><span className="brand-mark">L</span><span>ledgerly</span></div>
+              <div className="print-header-right">
+                <h1>Financial Summary</h1>
+                <p className="print-meta">Report generated {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
+              </div>
             </div>
+
+            <div className="print-totals">
+              <div><span>Total Income</span><strong className="print-income">{money(income)}</strong></div>
+              <div><span>Total Spending</span><strong className="print-expense">{money(spent)}</strong></div>
+              <div><span>Net Balance</span><strong>{money(income - spent)}</strong></div>
+            </div>
+
+            {budgets.length > 0 && (
+              <>
+                <h2 className="print-section-title">Category Budgets</h2>
+                <table>
+                  <thead>
+                    <tr><th>Category</th><th>Spent</th><th>Limit</th><th>Remaining</th></tr>
+                  </thead>
+                  <tbody>
+                    {budgets.map(b => (
+                      <tr key={b.name}>
+                        <td>{b.name}</td>
+                        <td>{money(b.spent)}</td>
+                        <td>{money(b.limit)}</td>
+                        <td>{money(b.limit - b.spent)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
+            )}
+
+            {bills.length > 0 && (
+              <>
+                <h2 className="print-section-title">Recurring Bills</h2>
+                <table>
+                  <thead>
+                    <tr><th>Service</th><th>Amount</th><th>Due</th><th>Frequency</th><th>Status</th></tr>
+                  </thead>
+                  <tbody>
+                    {bills.map(b => (
+                      <tr key={b.name}>
+                        <td>{b.name}</td>
+                        <td>{money(b.amount)}</td>
+                        <td>{new Date(`${b.due}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: '2-digit' })}</td>
+                        <td>{b.frequency}</td>
+                        <td>{b.paid ? 'Paid' : 'Unpaid'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
+            )}
+
+            <h2 className="print-section-title">Transactions</h2>
             <table>
               <thead>
                 <tr>
@@ -1281,12 +1359,14 @@ export default function Page() {
                     <td>{t.merchant}</td>
                     <td>{t.category}</td>
                     <td>{t.date}</td>
-                    <td>{money(t.amount)}</td>
+                    <td className={t.type === 'Income' ? 'print-income' : ''}>{t.type === 'Income' ? '+' : '-'}{money(t.amount)}</td>
                     <td>{t.type}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
+
+            <p className="print-footer">Generated by Ledgerly — Personal finance, made clear.</p>
           </div>
         </div>
       )}
