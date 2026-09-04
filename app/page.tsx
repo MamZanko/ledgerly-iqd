@@ -303,6 +303,44 @@ export default function Page() {
   const income = active.filter(t => t.type === 'Income').reduce((a, t) => a + t.amount, 0)
   const spent = active.filter(t => t.type === 'Expense').reduce((a, t) => a + t.amount, 0)
 
+  const monthlyTrends = useMemo(() => {
+    const now = new Date()
+    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0)
+
+    const inRange = (dateStr: string, start: Date, end: Date) => {
+      const d = new Date(`${dateStr}T00:00:00`)
+      return d >= start && d <= end
+    }
+
+    const sumFor = (type: 'Income' | 'Expense', start: Date, end: Date) =>
+      active
+        .filter(t => t.type === type && inRange(t.date, start, end))
+        .reduce((a, t) => a + t.amount, 0)
+
+    const thisMonthIncome = sumFor('Income', thisMonthStart, now)
+    const lastMonthIncome = sumFor('Income', lastMonthStart, lastMonthEnd)
+    const thisMonthSpent = sumFor('Expense', thisMonthStart, now)
+    const lastMonthSpent = sumFor('Expense', lastMonthStart, lastMonthEnd)
+
+    const thisMonthBalance = thisMonthIncome - thisMonthSpent
+    const lastMonthBalance = lastMonthIncome - lastMonthSpent
+
+    const pctChange = (current: number, previous: number) => {
+      if (previous === 0) return current === 0 ? 0 : 100
+      return ((current - previous) / Math.abs(previous)) * 100
+    }
+
+    return {
+      balance: pctChange(thisMonthBalance, lastMonthBalance),
+      income: pctChange(thisMonthIncome, lastMonthIncome),
+      spent: pctChange(thisMonthSpent, lastMonthSpent),
+    }
+  }, [active])
+
+  const formatTrend = (pct: number) => `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}% vs last month`
+
   const expenseCategories = useMemo(() => categories.filter(c => c.type === 'Expense'), [categories])
   const incomeCategories = useMemo(() => categories.filter(c => c.type === 'Income'), [categories])
   const categoriesForFormType = useMemo(() => categories.filter(c => c.type === form.type), [categories, form.type])
@@ -799,9 +837,9 @@ export default function Page() {
                   </div>
 
                   <div className="stats-grid">
-                    <Stat label="Available balance" value={money(income - spent)} trend="12.4% vs last month" tone="positive" />
-                    <Stat label="Total income" value={money(income)} trend="8.2% vs last month" tone="positive" />
-                    <Stat label="Total spending" value={money(spent)} trend="3.1% vs last month" />
+                    <Stat label="Available balance" value={money(income - spent)} trend={formatTrend(monthlyTrends.balance)} tone={monthlyTrends.balance >= 0 ? 'positive' : undefined} />
+                    <Stat label="Total income" value={money(income)} trend={formatTrend(monthlyTrends.income)} tone={monthlyTrends.income >= 0 ? 'positive' : undefined} />
+                    <Stat label="Total spending" value={money(spent)} trend={formatTrend(monthlyTrends.spent)} tone={monthlyTrends.spent > 0 ? undefined : 'positive'} />
                   </div>
 
                   <div className="two-col">
