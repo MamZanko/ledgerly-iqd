@@ -270,25 +270,13 @@ export default function Page() {
   useEffect(() => {
     async function loadData() {
       try {
-        const [txRes, budgetRes, billRes, historyRes, categoryRes] = await Promise.all([
-          fetch('/api/transactions'),
-          fetch('/api/budgets'),
-          fetch('/api/bills'),
-          fetch('/api/history'),
-          fetch('/api/categories'),
-        ])
-        const [txData, budgetData, billData, historyData, categoryData] = await Promise.all([
-          txRes.json(),
-          budgetRes.json(),
-          billRes.json(),
-          historyRes.json(),
-          categoryRes.json(),
-        ])
-        setTransactions(Array.isArray(txData) ? txData : [])
-        setBudgets(Array.isArray(budgetData) ? budgetData : [])
-        setBills(Array.isArray(billData) ? billData : [])
-        setHistory(Array.isArray(historyData) ? historyData : [])
-        setCategories(Array.isArray(categoryData) ? categoryData : [])
+        const res = await fetch('/api/dashboard')
+        const data = await res.json()
+        setTransactions(Array.isArray(data.transactions) ? data.transactions : [])
+        setBudgets(Array.isArray(data.budgets) ? data.budgets : [])
+        setBills(Array.isArray(data.bills) ? data.bills : [])
+        setHistory(Array.isArray(data.history) ? data.history : [])
+        setCategories(Array.isArray(data.categories) ? data.categories : [])
       } catch (err) {
         console.error('Failed to load data', err)
       } finally {
