@@ -30,6 +30,7 @@ import {
   Settings,
   SlidersHorizontal,
   SunMedium,
+  Tag,
   Trash2,
   TrendingUp,
   Upload,
@@ -47,20 +48,24 @@ type HistoryEntry = {
   changedFields: Record<string, { old: any; new: any }> | null
   timestamp: string
 }
-type SettingsSection = 'profile' | 'regional' | 'appearance' | 'data'
+type SettingsSection = 'profile' | 'regional' | 'appearance' | 'categories' | 'data'
 type TransactionForm = { merchant: string; category: string; amount: string; date: string; type: 'Expense' | 'Income' }
 type BudgetForm = { name: string; limit: string; color: string }
 type BillForm = { name: string; amount: string; due: string; frequency: 'Monthly' | 'Yearly' }
 type Budget = { name: string; spent: number; limit: number; color: string }
 type Bill = { name: string; due: string; amount: number; paid: boolean; frequency: 'Monthly' | 'Yearly' }
+type Category = { id: number; name: string; type: 'Expense' | 'Income' }
+type CategoryForm = { name: string; type: 'Expense' | 'Income' }
 
 const emptyBudgetForm: BudgetForm = { name: '', limit: '', color: 'bg-primary' }
 const emptyBillForm: BillForm = { name: '', amount: '', due: '2026-08-28', frequency: 'Monthly' }
+const emptyCategoryForm: CategoryForm = { name: '', type: 'Expense' }
 
 const settingsSections: { id: SettingsSection; label: string; icon: React.ElementType }[] = [
   { id: 'profile', label: 'Profile', icon: CircleUserRound },
   { id: 'regional', label: 'Regional & Currency', icon: Globe2 },
   { id: 'appearance', label: 'Appearance', icon: Palette },
+  { id: 'categories', label: 'Categories', icon: Tag },
   { id: 'data', label: 'Data Management', icon: Database },
 ]
 
@@ -78,11 +83,10 @@ const accentOptions = [
 ] as const
 
 const monthOptions = ['1st of every month', '15th of every month', 'Last day of every month']
-const categoryOptions = ['Groceries', 'Utilities', 'Shopping', 'Transport', 'Dining', 'Health', 'Income']
 
 const emptyForm: TransactionForm = {
   merchant: '',
-  category: 'Groceries',
+  category: '',
   amount: '',
   date: '2026-08-24',
   type: 'Expense',
@@ -183,6 +187,7 @@ export default function Page() {
   const [budgets, setBudgets] = useState<Budget[]>([])
   const [bills, setBills] = useState<Bill[]>([])
   const [history, setHistory] = useState<HistoryEntry[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -190,6 +195,7 @@ export default function Page() {
   const [isAddTransactionOpen, setIsAddTransactionOpen] = useState(false)
   const [isAddBudgetOpen, setIsAddBudgetOpen] = useState(false)
   const [isAddBillOpen, setIsAddBillOpen] = useState(false)
+  const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false)
   const [budgetMenu, setBudgetMenu] = useState<string | null>(null)
   const [editingBudget, setEditingBudget] = useState<string | null>(null)
   const [modalMode, setModalMode] = useState<'add' | 'edit'>('add')
@@ -199,15 +205,35 @@ export default function Page() {
   const [budgetForm, setBudgetForm] = useState<BudgetForm>(emptyBudgetForm)
   const [billForm, setBillForm] = useState<BillForm>(emptyBillForm)
   const [editingBill, setEditingBill] = useState<string | null>(null)
+  const [categoryForm, setCategoryForm] = useState<CategoryForm>(emptyCategoryForm)
+  const [editingCategory, setEditingCategory] = useState<number | null>(null)
   const [merchantQuery, setMerchantQuery] = useState('')
   const [categoryQuery, setCategoryQuery] = useState('')
   const [settingsSection, setSettingsSection] = useState<SettingsSection>('profile')
   const [displayName, setDisplayName] = useState('Zanko Muhammad')
-    const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [currencyFormat, setCurrencyFormat] = useState<'symbol' | 'code'>('symbol')
   const [startOfMonth, setStartOfMonth] = useState('1st of every month')
   const [themeChoice, setThemeChoice] = useState<(typeof themeOptions)[number]['id']>('light')
-    useEffect(() => {
+  const [accentChoice, setAccentChoice] = useState<(typeof accentOptions)[number]['id']>('classic')
+  const [autoBackups, setAutoBackups] = useState(true)
+  const [reduceMotion, setReduceMotion] = useState(false)
+  const [lastSaved, setLastSaved] = useState('Unsaved changes')
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const [now, setNow] = useState(() => new Date())
+
+  const [periodA, setPeriodA] = useState({ label: 'This Month', start: getDefaultDateRange('This Month').start, end: getDefaultDateRange('This Month').end })
+  const [periodB, setPeriodB] = useState({ label: 'Last Month', start: getDefaultDateRange('Last Month').start, end: getDefaultDateRange('Last Month').end })
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([])
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(new Date()), 60000)
+    return () => clearInterval(interval)
+  }, [])
+
+  const greeting = now.getHours() < 12 ? 'Good morning' : now.getHours() < 18 ? 'Good afternoon' : 'Good evening'
+  const formattedDate = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
+
+  useEffect(() => {
     const root = document.documentElement
     const applyTheme = (isDark: boolean) => {
       root.setAttribute('data-theme', isDark ? 'dark' : 'light')
@@ -221,31 +247,17 @@ export default function Page() {
     }
     applyTheme(themeChoice === 'dark')
   }, [themeChoice])
-  const [accentChoice, setAccentChoice] = useState<(typeof accentOptions)[number]['id']>('classic')
-    useEffect(() => {
+
+  useEffect(() => {
     const selected = accentOptions.find(o => o.id === accentChoice)
     if (selected) {
       document.documentElement.style.setProperty('--primary', selected.value)
     }
   }, [accentChoice])
-  const [autoBackups, setAutoBackups] = useState(true)
-  const [reduceMotion, setReduceMotion] = useState(false)
-    useEffect(() => {
-    document.documentElement.setAttribute('data-reduce-motion', reduceMotion ? 'true' : 'false')
-  }, [reduceMotion])
-  const [lastSaved, setLastSaved] = useState('Unsaved changes')
-  const [now, setNow] = useState(() => new Date())
 
   useEffect(() => {
-    const interval = setInterval(() => setNow(new Date()), 60000)
-    return () => clearInterval(interval)
-  }, [])
-
-  const greeting = now.getHours() < 12 ? 'Good morning' : now.getHours() < 18 ? 'Good afternoon' : 'Good evening'
-  const formattedDate = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
-  const [periodA, setPeriodA] = useState({ label: 'This Month', start: getDefaultDateRange('This Month').start, end: getDefaultDateRange('This Month').end })
-  const [periodB, setPeriodB] = useState({ label: 'Last Month', start: getDefaultDateRange('Last Month').start, end: getDefaultDateRange('Last Month').end })
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([])
+    document.documentElement.setAttribute('data-reduce-motion', reduceMotion ? 'true' : 'false')
+  }, [reduceMotion])
 
   useEffect(() => {
     const handleAfterPrint = () => setShowPrintSummary(false)
@@ -258,22 +270,25 @@ export default function Page() {
   useEffect(() => {
     async function loadData() {
       try {
-        const [txRes, budgetRes, billRes, historyRes] = await Promise.all([
+        const [txRes, budgetRes, billRes, historyRes, categoryRes] = await Promise.all([
           fetch('/api/transactions'),
           fetch('/api/budgets'),
           fetch('/api/bills'),
           fetch('/api/history'),
+          fetch('/api/categories'),
         ])
-        const [txData, budgetData, billData, historyData] = await Promise.all([
+        const [txData, budgetData, billData, historyData, categoryData] = await Promise.all([
           txRes.json(),
           budgetRes.json(),
           billRes.json(),
           historyRes.json(),
+          categoryRes.json(),
         ])
         setTransactions(Array.isArray(txData) ? txData : [])
         setBudgets(Array.isArray(budgetData) ? budgetData : [])
         setBills(Array.isArray(billData) ? billData : [])
         setHistory(Array.isArray(historyData) ? historyData : [])
+        setCategories(Array.isArray(categoryData) ? categoryData : [])
       } catch (err) {
         console.error('Failed to load data', err)
       } finally {
@@ -289,7 +304,7 @@ export default function Page() {
     router.refresh()
   }
 
-    async function handleLogoutEverywhere() {
+  async function handleLogoutEverywhere() {
     await fetch('/api/logout-everywhere', { method: 'POST' })
     router.push('/login')
     router.refresh()
@@ -300,15 +315,14 @@ export default function Page() {
   const income = active.filter(t => t.type === 'Income').reduce((a, t) => a + t.amount, 0)
   const spent = active.filter(t => t.type === 'Expense').reduce((a, t) => a + t.amount, 0)
 
+  const expenseCategories = useMemo(() => categories.filter(c => c.type === 'Expense'), [categories])
+  const incomeCategories = useMemo(() => categories.filter(c => c.type === 'Income'), [categories])
+  const categoriesForFormType = useMemo(() => categories.filter(c => c.type === form.type), [categories, form.type])
+
   const merchantSuggestions = useMemo(() => {
     const names = [...new Set(active.map(t => t.merchant))]
     return names.filter(name => name.toLowerCase().includes(merchantQuery.trim().toLowerCase())).slice(0, 6)
   }, [active, merchantQuery])
-
-  const categoryMatches = useMemo(() => {
-    if (!categoryQuery.trim()) return categoryOptions
-    return categoryOptions.filter(category => category.toLowerCase().includes(categoryQuery.trim().toLowerCase()))
-  }, [categoryQuery])
 
   const historyEntries = useMemo(() => {
     const items = historyFilter === 'All' ? history : history.filter(entry => entry.action === historyFilter)
@@ -316,9 +330,10 @@ export default function Page() {
   }, [history, historyFilter])
 
   const comparisonCategories = useMemo(() => {
-    const allowed = selectedCategories.length ? selectedCategories : categoryOptions
-    return allowed.filter(category => category !== 'Income')
-  }, [selectedCategories])
+    const expenseNames = expenseCategories.map(c => c.name)
+    const allowed = selectedCategories.length ? selectedCategories : expenseNames
+    return allowed.filter(category => expenseNames.includes(category))
+  }, [selectedCategories, expenseCategories])
 
   const comparisonData = useMemo(() => {
     const maxAmount = Math.max(
@@ -349,7 +364,8 @@ export default function Page() {
   }
 
   const openAddModal = () => {
-    setForm(emptyForm)
+    const defaultCategory = categories.find(c => c.type === 'Expense')?.name ?? ''
+    setForm({ ...emptyForm, category: defaultCategory })
     setMerchantQuery('')
     setCategoryQuery('')
     setModalMode('add')
@@ -521,7 +537,7 @@ export default function Page() {
   }
 
   const addTransaction = async () => {
-    if (!form.merchant.trim() || !form.amount || Number(form.amount) <= 0) return
+    if (!form.merchant.trim() || !form.amount || Number(form.amount) <= 0 || !form.category) return
     try {
       const res = await fetch('/api/transactions', {
         method: 'POST',
@@ -545,7 +561,7 @@ export default function Page() {
   }
 
   const saveTransaction = async () => {
-    if (editingId === null || !form.merchant.trim() || !form.amount || Number(form.amount) <= 0) return
+    if (editingId === null || !form.merchant.trim() || !form.amount || Number(form.amount) <= 0 || !form.category) return
     try {
       const res = await fetch(`/api/transactions/${editingId}`, {
         method: 'PATCH',
@@ -614,6 +630,63 @@ export default function Page() {
     }
   }
 
+  const openAddCategoryModal = () => {
+    setEditingCategory(null)
+    setCategoryForm(emptyCategoryForm)
+    setIsAddCategoryOpen(true)
+  }
+
+  const openEditCategoryModal = (category: Category) => {
+    setEditingCategory(category.id)
+    setCategoryForm({ name: category.name, type: category.type })
+    setIsAddCategoryOpen(true)
+  }
+
+  const saveCategory = async () => {
+    if (!categoryForm.name.trim()) return
+    try {
+      if (editingCategory !== null) {
+        const res = await fetch(`/api/categories/${editingCategory}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: categoryForm.name.trim(), type: categoryForm.type }),
+        })
+        if (!res.ok) throw new Error('Failed to update category')
+        const updated = await res.json()
+        setCategories(prev => prev.map(c => c.id === editingCategory ? updated : c))
+        const txRes = await fetch('/api/transactions')
+        const txData = await txRes.json()
+        if (Array.isArray(txData)) setTransactions(txData)
+      } else {
+        const res = await fetch('/api/categories', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: categoryForm.name.trim(), type: categoryForm.type }),
+        })
+        if (!res.ok) throw new Error('Failed to create category')
+        const created = await res.json()
+        setCategories(prev => [...prev, created])
+      }
+      setIsAddCategoryOpen(false)
+      setCategoryForm(emptyCategoryForm)
+      setEditingCategory(null)
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  const deleteCategory = async (id: number) => {
+    const previous = categories
+    setCategories(prev => prev.filter(c => c.id !== id))
+    try {
+      const res = await fetch(`/api/categories/${id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Failed to delete category')
+    } catch (err) {
+      console.error(err)
+      setCategories(previous)
+    }
+  }
+
   const exportCsv = () => {
     const csv = ['Merchant,Category,Date,Amount,Type', ...active.map(t => `${t.merchant},${t.category},${t.date},${t.amount},${t.type}`)].join('\n')
     const a = document.createElement('a')
@@ -623,7 +696,7 @@ export default function Page() {
   }
 
   const exportJson = () => {
-    const payload = { transactions: active, budgets, bills }
+    const payload = { transactions: active, budgets, bills, categories }
     const a = document.createElement('a')
     a.href = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }))
     a.download = 'ledgerly-backup.json'
@@ -647,7 +720,7 @@ export default function Page() {
     setCurrencyFormat('symbol')
     setStartOfMonth('1st of every month')
     setThemeChoice('light')
-    setAccentChoice('emerald')
+    setAccentChoice('classic')
     setAutoBackups(true)
     setReduceMotion(false)
     setLastSaved('Unsaved changes')
@@ -950,16 +1023,17 @@ export default function Page() {
                           <input type="checkbox" checked={selectedCategories.length === 0} onChange={() => setSelectedCategories([])} />
                           <span>All Categories</span>
                         </label>
-                        {categoryOptions.filter(category => category !== 'Income').map(category => (
-                          <label key={category} className="checkbox-row">
-                            <input type="checkbox" checked={selectedCategories.includes(category) || selectedCategories.length === 0} onChange={() => {
+                        {expenseCategories.map(category => (
+                          <label key={category.id} className="checkbox-row">
+                            <input type="checkbox" checked={selectedCategories.includes(category.name) || selectedCategories.length === 0} onChange={() => {
+                              const expenseNames = expenseCategories.map(c => c.name)
                               if (selectedCategories.length === 0) {
-                                setSelectedCategories(categoryOptions.filter(item => item !== category))
+                                setSelectedCategories(expenseNames.filter(item => item !== category.name))
                                 return
                               }
-                              setSelectedCategories(prev => prev.includes(category) ? prev.filter(item => item !== category) : [...prev, category])
+                              setSelectedCategories(prev => prev.includes(category.name) ? prev.filter(item => item !== category.name) : [...prev, category.name])
                             }} />
-                            <span>{category}</span>
+                            <span>{category.name}</span>
                           </label>
                         ))}
                       </div>
@@ -1162,6 +1236,45 @@ export default function Page() {
                       </div>
                     </section>
 
+                    <section id="categories" className={`settings-card ${settingsSection === 'categories' ? 'active' : ''}`}>
+                      <div className="settings-card-head">
+                        <div><p className="eyebrow">Manage categories</p><h3>Categories</h3></div>
+                        <button className="primary-button" type="button" onClick={openAddCategoryModal}><Plus size={16} /> Add category</button>
+                      </div>
+                      <div className="settings-card-grid">
+                        <div>
+                          <div className="category-manage-list">
+                            {categories.map(c => (
+                              <div className="category-manage-row" key={c.id}>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                                  {c.name}
+                                  <span
+                                    style={{
+                                      fontSize: '0.7rem',
+                                      fontWeight: 600,
+                                      padding: '0.15rem 0.5rem',
+                                      borderRadius: '999px',
+                                      textTransform: 'uppercase',
+                                      letterSpacing: '0.02em',
+                                      background: c.type === 'Income' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(148, 163, 184, 0.16)',
+                                      color: c.type === 'Income' ? 'var(--primary)' : 'var(--muted-foreground)',
+                                    }}
+                                  >
+                                    {c.type}
+                                  </span>
+                                </span>
+                                <div className="category-manage-actions">
+                                  <button type="button" className="row-action" aria-label={`Edit ${c.name}`} onClick={() => openEditCategoryModal(c)}><Pencil size={14} /></button>
+                                  <button type="button" className="row-action" aria-label={`Delete ${c.name}`} onClick={() => deleteCategory(c.id)}><Trash2 size={14} /></button>
+                                </div>
+                              </div>
+                            ))}
+                            {categories.length === 0 && <p className="muted">No categories yet.</p>}
+                          </div>
+                        </div>
+                      </div>
+                    </section>
+
                     <section id="data" className={`settings-card ${settingsSection === 'data' ? 'active' : ''}`}>
                       <div className="settings-card-head">
                         <div><p className="eyebrow">Local data tools</p><h3>Data &amp; Backups</h3></div>
@@ -1209,6 +1322,19 @@ export default function Page() {
             </div>
 
             <div className="flex flex-col space-y-4 mt-4">
+              <div className="flex items-center">
+                <div className="inline-flex rounded-xl bg-slate-100 p-1">
+                  <button type="button" className={`px-4 py-2 rounded-lg ${form.type === 'Expense' ? 'bg-white text-slate-900 shadow-sm font-medium' : 'text-slate-500'}`} onClick={() => {
+                    const firstExpense = categories.find(c => c.type === 'Expense')?.name ?? ''
+                    setForm({ ...form, type: 'Expense', category: firstExpense })
+                  }}>Expense</button>
+                  <button type="button" className={`px-4 py-2 rounded-lg ${form.type === 'Income' ? 'bg-white text-slate-900 shadow-sm font-medium' : 'text-slate-500'}`} onClick={() => {
+                    const firstIncome = categories.find(c => c.type === 'Income')?.name ?? ''
+                    setForm({ ...form, type: 'Income', category: firstIncome })
+                  }}>Income</button>
+                </div>
+              </div>
+
               <div className="flex flex-col space-y-1.5 relative">
                 <label className="text-slate-300 font-medium text-sm mb-1.5 block">Merchant Name</label>
                 <input autoFocus className="bg-slate-50 border border-slate-200 text-slate-900 placeholder:text-slate-400 rounded-xl px-4 py-3 focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 transition-all w-full" placeholder="e.g. Family Mall" value={form.merchant} onChange={e => { setForm({ ...form, merchant: e.target.value }); setMerchantQuery(e.target.value) }} />
@@ -1226,8 +1352,9 @@ export default function Page() {
               <div className="flex flex-col space-y-1.5 relative">
                 <label className="text-slate-300 font-medium text-sm mb-1.5 block">Category</label>
                 <select className="bg-slate-50 border border-slate-200 text-slate-900 placeholder:text-slate-400 rounded-xl px-4 py-3 focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 transition-all w-full" value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}>
-                  {categoryOptions.map(c => (
-                    <option key={c} value={c}>{c}</option>
+                  {categoriesForFormType.length === 0 && <option value="">No categories yet</option>}
+                  {categoriesForFormType.map(c => (
+                    <option key={c.id} value={c.name}>{c.name}</option>
                   ))}
                 </select>
               </div>
@@ -1244,13 +1371,6 @@ export default function Page() {
                 <div className="flex flex-col space-y-1.5">
                   <label className="text-slate-300 font-medium text-sm mb-1.5 block">Date</label>
                   <input type="date" className="bg-slate-50 border border-slate-200 text-slate-900 placeholder:text-slate-400 rounded-xl px-4 py-3 focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 transition-all w-full" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} />
-                </div>
-              </div>
-
-              <div className="flex items-center">
-                <div className="inline-flex rounded-xl bg-slate-100 p-1">
-                  <button type="button" className={`px-4 py-2 rounded-lg ${form.type === 'Expense' ? 'bg-white text-slate-900 shadow-sm font-medium' : 'text-slate-500'}`} onClick={() => setForm({ ...form, type: 'Expense' })}>Expense</button>
-                  <button type="button" className={`px-4 py-2 rounded-lg ${form.type === 'Income' ? 'bg-white text-slate-900 shadow-sm font-medium' : 'text-slate-500'}`} onClick={() => setForm({ ...form, type: 'Income' })}>Income</button>
                 </div>
               </div>
 
@@ -1285,6 +1405,25 @@ export default function Page() {
               <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-700 mb-1.5 block">Billing Amount (IQD)<input type="number" className="modal-input" placeholder="0" value={billForm.amount} onChange={e => setBillForm({ ...billForm, amount: e.target.value })} /></label>
               <div className="grid grid-cols-2 gap-4"><label className="flex flex-col gap-1.5 text-sm font-medium text-slate-700 mb-1.5 block">Due Date<input type="date" className="modal-input" value={billForm.due} onChange={e => setBillForm({ ...billForm, due: e.target.value })} /></label><label className="flex flex-col gap-1.5 text-sm font-medium text-slate-700 mb-1.5 block">Frequency<select className="modal-input" value={billForm.frequency} onChange={e => setBillForm({ ...billForm, frequency: e.target.value as BillForm['frequency'] })}><option>Monthly</option><option>Yearly</option></select></label></div>
               <button className="w-full py-3.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-medium" type="button" onClick={saveBill}>{editingBill ? 'Save changes' : 'Save recurring expense'}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isAddCategoryOpen && (
+        <div className="modal-backdrop" onClick={() => setIsAddCategoryOpen(false)}>
+          <div className="modal relative z-50 max-w-md w-full bg-white text-slate-900 border border-slate-200 rounded-2xl p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-start justify-between"><div><h3 className="text-xs font-semibold tracking-wider text-emerald-700 uppercase">MANAGE</h3><h2 className="mt-1 text-xl font-bold text-slate-900">{editingCategory !== null ? 'Edit Category' : 'Add Category'}</h2></div><button className="text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg p-2 transition-colors" onClick={() => setIsAddCategoryOpen(false)} aria-label="Close"><X size={18} /></button></div>
+            <div className="flex flex-col gap-4 mt-4">
+              <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-700 mb-1.5 block">Category Name<input autoFocus className="modal-input" placeholder="e.g. Subscriptions" value={categoryForm.name} onChange={e => setCategoryForm({ ...categoryForm, name: e.target.value })} /></label>
+              <div className="flex flex-col gap-1.5 text-sm font-medium text-slate-700 mb-1.5">
+                <span>Type</span>
+                <div className="inline-flex rounded-xl bg-slate-100 p-1">
+                  <button type="button" className={`px-4 py-2 rounded-lg flex-1 ${categoryForm.type === 'Expense' ? 'bg-white text-slate-900 shadow-sm font-medium' : 'text-slate-500'}`} onClick={() => setCategoryForm({ ...categoryForm, type: 'Expense' })}>Expense</button>
+                  <button type="button" className={`px-4 py-2 rounded-lg flex-1 ${categoryForm.type === 'Income' ? 'bg-white text-slate-900 shadow-sm font-medium' : 'text-slate-500'}`} onClick={() => setCategoryForm({ ...categoryForm, type: 'Income' })}>Income</button>
+                </div>
+              </div>
+              <button className="w-full py-3.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-medium" type="button" onClick={saveCategory}>{editingCategory !== null ? 'Save changes' : 'Add category'}</button>
             </div>
           </div>
         </div>
