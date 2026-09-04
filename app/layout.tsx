@@ -7,6 +7,7 @@ export const metadata: Metadata = {
   description:
     'A calm, focused workspace for tracking your money in Iraqi Dinar.',
   generator: 'v0.app',
+  manifest: '/manifest.json',
 
   icons: {
     icon: [
