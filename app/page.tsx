@@ -1351,10 +1351,12 @@ export default function Page() {
               <div className="flex items-center">
                 <div className="inline-flex rounded-xl bg-slate-100 p-1">
                   <button type="button" className={`px-4 py-2 rounded-lg ${form.type === 'Expense' ? 'bg-white text-slate-900 shadow-sm font-medium' : 'text-slate-500'}`} onClick={() => {
+                    if (form.type === 'Expense') return
                     const firstExpense = categories.find(c => c.type === 'Expense')?.name ?? ''
                     setForm({ ...form, type: 'Expense', category: firstExpense })
                   }}>Expense</button>
                   <button type="button" className={`px-4 py-2 rounded-lg ${form.type === 'Income' ? 'bg-white text-slate-900 shadow-sm font-medium' : 'text-slate-500'}`} onClick={() => {
+                    if (form.type === 'Income') return
                     const firstIncome = categories.find(c => c.type === 'Income')?.name ?? ''
                     setForm({ ...form, type: 'Income', category: firstIncome })
                   }}>Income</button>
