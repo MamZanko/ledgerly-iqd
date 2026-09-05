@@ -1388,7 +1388,7 @@ export default function Page() {
 
               <div className="flex flex-col space-y-1.5 relative">
                 <label className="text-slate-300 font-medium text-sm mb-1.5 block">Category</label>
-                <select className="bg-slate-50 border border-slate-200 text-slate-900 placeholder:text-slate-400 rounded-xl px-4 py-3 focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 transition-all w-full" value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}>
+                <select className="tx-category-select" value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}>
                   {categoriesForFormType.length === 0 && !form.category && <option value="">No categories yet</option>}
                   {form.category && !categoriesForFormType.some(c => c.name === form.category) && (
                     <option value={form.category}>{form.category} (deleted category)</option>
