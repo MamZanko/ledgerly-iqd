@@ -1375,7 +1375,7 @@ export default function Page() {
                   onFocus={() => setIsMerchantFocused(true)}
                   onBlur={() => setTimeout(() => setIsMerchantFocused(false), 120)}
                 />
-                {isMerchantFocused && merchantSuggestions.length > 0 && form.merchant && (
+                {isMerchantFocused && modalMode === 'add' && merchantSuggestions.length > 0 && form.merchant && (
                   <div className="suggestion-list absolute z-[100] top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl max-h-48 overflow-y-auto">
                     {merchantSuggestions.map(name => (
                       <button key={name} type="button" className="suggestion-item" onClick={() => { setForm({ ...form, merchant: name }); setMerchantQuery(name); setIsMerchantFocused(false) }}>
