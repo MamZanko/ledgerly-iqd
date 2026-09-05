@@ -180,6 +180,45 @@ function SettingsSwitch({ checked, onClick, label, description }: { checked: boo
   )
 }
 
+type CategoryDropdownOption = { value: string; label: string }
+
+function CategoryDropdown({ value, options, onChange, placeholder = 'Select a category' }: { value: string; options: CategoryDropdownOption[]; onChange: (value: string) => void; placeholder?: string }) {
+  const [isOpen, setIsOpen] = useState(false)
+  const selected = options.find(o => o.value === value)
+
+  return (
+    <div className="custom-select" onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setIsOpen(false) }}>
+      <button
+        type="button"
+        className={`custom-select-trigger ${isOpen ? 'open' : ''}`}
+        onClick={() => setIsOpen(prev => !prev)}
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+      >
+        <span className={selected ? '' : 'placeholder'}>{selected ? selected.label : placeholder}</span>
+        <ChevronDown size={16} className="custom-select-chevron" />
+      </button>
+      {isOpen && (
+        <div className="custom-select-list" role="listbox">
+          {options.length === 0 && <div className="custom-select-empty">No categories yet</div>}
+          {options.map(option => (
+            <button
+              type="button"
+              key={option.value}
+              role="option"
+              aria-selected={option.value === value}
+              className={`custom-select-option ${option.value === value ? 'selected' : ''}`}
+              onClick={() => { onChange(option.value); setIsOpen(false) }}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Page() {
   const router = useRouter()
   const [view, setView] = useState<View>('Overview')
@@ -1388,15 +1427,16 @@ export default function Page() {
 
               <div className="flex flex-col space-y-1.5 relative">
                 <label className="text-slate-300 font-medium text-sm mb-1.5 block">Category</label>
-                <select className="tx-category-select" value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}>
-                  {categoriesForFormType.length === 0 && !form.category && <option value="">No categories yet</option>}
-                  {form.category && !categoriesForFormType.some(c => c.name === form.category) && (
-                    <option value={form.category}>{form.category} (deleted category)</option>
-                  )}
-                  {categoriesForFormType.map(c => (
-                    <option key={c.id} value={c.name}>{c.name}</option>
-                  ))}
-                </select>
+                <CategoryDropdown
+                  value={form.category}
+                  onChange={value => setForm({ ...form, category: value })}
+                  options={[
+                    ...(form.category && !categoriesForFormType.some(c => c.name === form.category)
+                      ? [{ value: form.category, label: `${form.category} (deleted category)` }]
+                      : []),
+                    ...categoriesForFormType.map(c => ({ value: c.name, label: c.name })),
+                  ]}
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
