@@ -208,6 +208,7 @@ export default function Page() {
   const [categoryForm, setCategoryForm] = useState<CategoryForm>(emptyCategoryForm)
   const [editingCategory, setEditingCategory] = useState<number | null>(null)
   const [merchantQuery, setMerchantQuery] = useState('')
+  const [isMerchantFocused, setIsMerchantFocused] = useState(false)
   const [categoryQuery, setCategoryQuery] = useState('')
   const [settingsSection, setSettingsSection] = useState<SettingsSection>('profile')
   const [displayName, setDisplayName] = useState('Zanko Muhammad')
@@ -1365,11 +1366,19 @@ export default function Page() {
 
               <div className="flex flex-col space-y-1.5 relative">
                 <label className="text-slate-300 font-medium text-sm mb-1.5 block">Merchant Name</label>
-                <input autoFocus className="bg-slate-50 border border-slate-200 text-slate-900 placeholder:text-slate-400 rounded-xl px-4 py-3 focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 transition-all w-full" placeholder="e.g. Family Mall" value={form.merchant} onChange={e => { setForm({ ...form, merchant: e.target.value }); setMerchantQuery(e.target.value) }} />
-                {merchantSuggestions.length > 0 && form.merchant && (
+                <input
+                  autoFocus
+                  className="bg-slate-50 border border-slate-200 text-slate-900 placeholder:text-slate-400 rounded-xl px-4 py-3 focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 transition-all w-full"
+                  placeholder="e.g. Family Mall"
+                  value={form.merchant}
+                  onChange={e => { setForm({ ...form, merchant: e.target.value }); setMerchantQuery(e.target.value); setIsMerchantFocused(true) }}
+                  onFocus={() => setIsMerchantFocused(true)}
+                  onBlur={() => setTimeout(() => setIsMerchantFocused(false), 120)}
+                />
+                {isMerchantFocused && merchantSuggestions.length > 0 && form.merchant && (
                   <div className="suggestion-list absolute z-[100] top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl max-h-48 overflow-y-auto">
                     {merchantSuggestions.map(name => (
-                      <button key={name} type="button" className="suggestion-item" onClick={() => { setForm({ ...form, merchant: name }); setMerchantQuery(name); }}>
+                      <button key={name} type="button" className="suggestion-item" onClick={() => { setForm({ ...form, merchant: name }); setMerchantQuery(name); setIsMerchantFocused(false) }}>
                         {name}
                       </button>
                     ))}
