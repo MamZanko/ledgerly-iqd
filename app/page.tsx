@@ -340,6 +340,23 @@ export default function Page() {
   const income = active.filter(t => t.type === 'Income').reduce((a, t) => a + t.amount, 0)
   const spent = active.filter(t => t.type === 'Expense').reduce((a, t) => a + t.amount, 0)
 
+  const budgetsWithSpent = useMemo(() => {
+    const now = new Date()
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+
+    return budgets.map(b => {
+      const spentThisMonth = active
+        .filter(t => {
+          if (t.type !== 'Expense' || t.category !== b.name) return false
+          const d = new Date(`${t.date}T00:00:00`)
+          return d >= monthStart && d <= monthEnd
+        })
+        .reduce((sum, t) => sum + t.amount, 0)
+      return { ...b, spent: spentThisMonth }
+    })
+  }, [budgets, active])
+
   const monthlyTrends = useMemo(() => {
     const now = new Date()
     const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1)
@@ -880,7 +897,7 @@ export default function Page() {
                     <div className="panel">
                       <SectionTitle title="Budget health" action={<button className="text-button" onClick={() => setView('Category Budgets')}>View all <span>→</span></button>} />
                       <div className="budget-list">
-                        {budgets.slice(0, 3).map(b => (
+                        {budgetsWithSpent.slice(0, 3).map(b => (
                           <div className="budget-row" key={b.name}>
                             <div className="budget-meta"><span>{b.name}</span><small>{money(b.spent)} / {money(b.limit)}</small></div>
                             <div className="progress"><span className={b.color} style={{ width: `${Math.min(100, (b.spent / b.limit) * 100)}%` }} /></div>
@@ -976,7 +993,7 @@ export default function Page() {
                 <div className="budget-page">
                   <SectionTitle title="Monthly category budgets" action={<button className="primary-button" onClick={openBudgetModal}><Plus size={17} /> Add budget</button>} />
                   <div className="budget-cards">
-                    {budgets.map(b => (
+                    {budgetsWithSpent.map(b => (
                       <div className="panel budget-card" key={b.name}>
                         <div className="budget-card-head"><div className="category-dot" /><strong>{b.name}</strong><div className="relative"><button type="button" className="kebab" aria-label={`Actions for ${b.name}`} onClick={() => setBudgetMenu(budgetMenu === b.name ? null : b.name)}><MoreVertical size={17} /></button>{budgetMenu === b.name && <div className="card-menu"><button type="button" onClick={() => openEditBudget(b)}>Edit Limit</button><button type="button" onClick={() => deleteBudget(b.name)}>Delete Category</button></div>}</div></div>
                         <p className="big-number">{money(b.spent)}</p>
@@ -1014,7 +1031,7 @@ export default function Page() {
                       <SectionTitle title="Where your money goes" />
                       <div className="donut"><div><strong>{money(spent)}</strong><small>total spend</small></div></div>
                       <div className="legend">
-                        {budgets.map(b => <span key={b.name}><i className={b.color} />{b.name}<b>{spent > 0 ? Math.round((b.spent / spent) * 100) : 0}%</b></span>)}
+                        {budgetsWithSpent.map(b => <span key={b.name}><i className={b.color} />{b.name}<b>{spent > 0 ? Math.round((b.spent / spent) * 100) : 0}%</b></span>)}
                       </div>
                     </div>
 
@@ -1498,7 +1515,7 @@ export default function Page() {
                     <tr><th>Category</th><th>Spent</th><th>Limit</th><th>Remaining</th></tr>
                   </thead>
                   <tbody>
-                    {budgets.map(b => (
+                    {budgetsWithSpent.map(b => (
                       <tr key={b.name}>
                         <td>{b.name}</td>
                         <td>{money(b.spent)}</td>
