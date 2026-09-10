@@ -193,7 +193,7 @@ input:focus, select:focus { outline: none; border-color: var(--primary); box-sha
 .nav-item.active { color: var(--primary); font-weight: 700; }
 .active-nav-indicator { position: absolute; inset: 0; z-index: -1; border-radius: 9px; background: var(--accent); }
 .sidebar-footer { display: flex; align-items: center; gap: 10px; margin-top: auto; border-top: 1px solid var(--border); padding: 18px 8px 0; font-size: 12px; }
-.sidebar-footer small, .tx-info small, .bill-info small { display: block; color: var(--muted-foreground); margin-top: 3px; }
+.sidebar-footer small, .tx-info small { display: block; color: var(--muted-foreground); margin-top: 3px; }
 .avatar { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: #dcebe6; color: var(--primary); font-size: 11px; font-weight: 800; }
 .sidebar-footer svg { margin-left: auto; color: var(--muted-foreground); }
 
@@ -233,7 +233,7 @@ input:focus, select:focus { outline: none; border-color: var(--primary); box-sha
 .bar { width: 100%; border-radius: 12px 12px 0 0; background: linear-gradient(180deg, #b5d6c9 0%, var(--primary) 100%); min-height: 40px; }
 .bar.current { background: linear-gradient(180deg, #6db79d 0%, #1c7d61 100%); }
 .bar-wrap small { color: var(--muted-foreground); font-size: 11px; }
-.budget-list, .transactions, .history-list, .bill-list { display: flex; flex-direction: column; gap: 1.25rem; }
+.budget-list, .transactions, .history-list { display: flex; flex-direction: column; gap: 1.25rem; }
 .budget-row { display: flex; flex-direction: column; gap: 10px; }
 .budget-meta { display: flex; justify-content: space-between; gap: 14px; color: var(--foreground); font-size: 13px; }
 .budget-meta small { color: var(--muted-foreground); }
@@ -244,11 +244,11 @@ input:focus, select:focus { outline: none; border-color: var(--primary); box-sha
 .bg-chart-3 { background: var(--chart-3); }
 .bg-chart-4 { background: var(--chart-4); }
 .budget-row .progress span { background: var(--primary); }
-.tx-icon, .bill-icon { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: var(--muted); color: var(--foreground); }
+.tx-icon { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: var(--muted); color: var(--foreground); }
 .tx-icon.income { background: var(--success-soft); color: var(--success); }
-.transaction, .bill-row { display: flex; align-items: center; gap: 1rem; border-radius: 12px; padding: 1rem 1.5rem; }
-.tx-info, .bill-info { flex: 1; min-width: 0; }
-.tx-info strong, .bill-info strong { display: block; font-size: 14px; }
+.transaction { display: flex; align-items: center; gap: 1rem; border-radius: 12px; padding: 1rem 1.5rem; }
+.tx-info { flex: 1; min-width: 0; }
+.tx-info strong { display: block; font-size: 14px; }
 .amount-income { color: var(--primary); }
 .row-action { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; background: var(--muted); color: var(--muted-foreground); }
 .row-action:hover { background: var(--accent); color: var(--primary); }
@@ -788,7 +788,6 @@ input:focus, select:focus { outline: none; border-color: var(--primary); box-sha
   .toolbar { flex-wrap: wrap; }
   .toolbar .search { flex-basis: 100%; }
   .form-row, .compare-period-grid, .theme-grid, .settings-choice-grid, .category-checkboxes { grid-template-columns: 1fr; }
-  .bill-row > strong { display: none; }
   .status { white-space: nowrap; }
   .history-row { flex-direction: column; align-items: flex-start; }
 }

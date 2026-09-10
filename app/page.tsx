@@ -11,7 +11,6 @@ import {
   Check,
   ChevronDown,
   CircleUserRound,
-  CreditCard,
   Database,
   Download,
   FileSpreadsheet,
@@ -38,7 +37,7 @@ import {
   X,
 } from 'lucide-react'
 
-type View = 'Overview' | 'All Transactions' | 'Analytics & Reports' | 'Category Budgets' | 'Recurring & Bills' | 'Settings' | 'History' | 'Trash'
+type View = 'Overview' | 'All Transactions' | 'Analytics & Reports' | 'Category Budgets' | 'Settings' | 'History' | 'Trash'
 type Transaction = { id: number; category: string; date: string; amount: number; type: 'Expense' | 'Income'; deleted?: boolean }
 type HistoryAction = 'created' | 'edited' | 'deleted' | 'restored'
 type HistoryEntry = {
@@ -51,14 +50,11 @@ type HistoryEntry = {
 type SettingsSection = 'profile' | 'regional' | 'appearance' | 'categories' | 'data'
 type TransactionForm = { category: string; amount: string; date: string; type: 'Expense' | 'Income' }
 type BudgetForm = { name: string; limit: string; color: string }
-type BillForm = { name: string; amount: string; due: string; frequency: 'Monthly' | 'Yearly' }
 type Budget = { name: string; spent: number; limit: number; color: string }
-type Bill = { name: string; due: string; amount: number; paid: boolean; frequency: 'Monthly' | 'Yearly' }
 type Category = { id: number; name: string; type: 'Expense' | 'Income' }
 type CategoryForm = { name: string; type: 'Expense' | 'Income' }
 
 const emptyBudgetForm: BudgetForm = { name: '', limit: '', color: 'bg-primary' }
-const emptyBillForm: BillForm = { name: '', amount: '', due: '2026-08-28', frequency: 'Monthly' }
 const emptyCategoryForm: CategoryForm = { name: '', type: 'Expense' }
 
 const settingsSections: { id: SettingsSection; label: string; icon: React.ElementType }[] = [
@@ -96,7 +92,6 @@ const icons: Record<string, React.ElementType> = {
   'All Transactions': Receipt,
   'Analytics & Reports': BarChart3,
   'Category Budgets': Wallet,
-  'Recurring & Bills': CalendarDays,
   Settings,
   History: LayoutDashboard,
   Trash: Trash2,
@@ -223,7 +218,6 @@ export default function Page() {
   const [view, setView] = useState<View>('Overview')
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [budgets, setBudgets] = useState<Budget[]>([])
-  const [bills, setBills] = useState<Bill[]>([])
   const [history, setHistory] = useState<HistoryEntry[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -232,7 +226,6 @@ export default function Page() {
   const [historyFilter, setHistoryFilter] = useState<'All' | HistoryAction>('All')
   const [isAddTransactionOpen, setIsAddTransactionOpen] = useState(false)
   const [isAddBudgetOpen, setIsAddBudgetOpen] = useState(false)
-  const [isAddBillOpen, setIsAddBillOpen] = useState(false)
   const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false)
   const [budgetMenu, setBudgetMenu] = useState<string | null>(null)
   const [editingBudget, setEditingBudget] = useState<string | null>(null)
@@ -241,8 +234,6 @@ export default function Page() {
   const [showPrintSummary, setShowPrintSummary] = useState(false)
   const [form, setForm] = useState<TransactionForm>(emptyForm)
   const [budgetForm, setBudgetForm] = useState<BudgetForm>(emptyBudgetForm)
-  const [billForm, setBillForm] = useState<BillForm>(emptyBillForm)
-  const [editingBill, setEditingBill] = useState<string | null>(null)
   const [categoryForm, setCategoryForm] = useState<CategoryForm>(emptyCategoryForm)
   const [editingCategory, setEditingCategory] = useState<number | null>(null)
   const [categoryQuery, setCategoryQuery] = useState('')
@@ -323,7 +314,6 @@ export default function Page() {
         const data = await res.json()
         setTransactions(Array.isArray(data.transactions) ? data.transactions : [])
         setBudgets(Array.isArray(data.budgets) ? data.budgets : [])
-        setBills(Array.isArray(data.bills) ? data.bills : [])
         setHistory(Array.isArray(data.history) ? data.history : [])
         setCategories(Array.isArray(data.categories) ? data.categories : [])
       } catch (err) {
@@ -504,30 +494,6 @@ export default function Page() {
     }
   }
 
-  const openBillModal = () => {
-    setEditingBill(null)
-    setBillForm(emptyBillForm)
-    setIsAddBillOpen(true)
-  }
-
-  const openEditBill = (bill: Bill) => {
-    setEditingBill(bill.name)
-    setBillForm({ name: bill.name, amount: String(bill.amount), due: bill.due, frequency: bill.frequency })
-    setIsAddBillOpen(true)
-  }
-
-  const deleteBill = async (name: string) => {
-    const previous = bills
-    setBills(prev => prev.filter(bill => bill.name !== name))
-    try {
-      const res = await fetch(`/api/bills/${encodeURIComponent(name)}`, { method: 'DELETE' })
-      if (!res.ok) throw new Error('Failed to delete bill')
-    } catch (err) {
-      console.error(err)
-      setBills(previous)
-    }
-  }
-
   const saveBudget = async () => {
     if (!budgetForm.name.trim() || !budgetForm.limit || Number(budgetForm.limit) <= 0) return
     try {
@@ -555,62 +521,6 @@ export default function Page() {
       setEditingBudget(null)
     } catch (err) {
       console.error(err)
-    }
-  }
-
-  const saveBill = async () => {
-    if (!billForm.name.trim() || !billForm.amount || Number(billForm.amount) <= 0 || !billForm.due) return
-    try {
-      if (editingBill) {
-        const res = await fetch(`/api/bills/${encodeURIComponent(editingBill)}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: billForm.name.trim(), amount: Number(billForm.amount), due: billForm.due, frequency: billForm.frequency }),
-        })
-        if (!res.ok) throw new Error('Failed to update bill')
-        const updated = await res.json()
-        setBills(prev => prev.map(bill => bill.name === editingBill ? updated : bill))
-      } else {
-        const res = await fetch('/api/bills', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: billForm.name.trim(), amount: Number(billForm.amount), due: billForm.due, frequency: billForm.frequency }),
-        })
-        if (!res.ok) throw new Error('Failed to create bill')
-        const created = await res.json()
-        setBills(prev => [...prev, created])
-      }
-      setIsAddBillOpen(false)
-      setBillForm(emptyBillForm)
-      setEditingBill(null)
-    } catch (err) {
-      console.error(err)
-    }
-  }
-
-  const toggleBillPaid = async (name: string) => {
-    const current = bills.find(bill => bill.name === name)
-    if (!current) return
-    const wasUnpaid = !current.paid
-    const previous = bills
-    setBills(prev => prev.map(bill => bill.name === name ? { ...bill, paid: !bill.paid } : bill))
-    try {
-      const res = await fetch(`/api/bills/${encodeURIComponent(name)}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paid: wasUnpaid }),
-      })
-      if (!res.ok) throw new Error('Failed to update bill')
-
-      if (wasUnpaid) {
-        const [txRes, historyRes] = await Promise.all([fetch('/api/transactions'), fetch('/api/history')])
-        const [txData, historyData] = await Promise.all([txRes.json(), historyRes.json()])
-        if (Array.isArray(txData)) setTransactions(txData)
-        if (Array.isArray(historyData)) setHistory(historyData)
-      }
-    } catch (err) {
-      console.error(err)
-      setBills(previous)
     }
   }
 
@@ -797,7 +707,7 @@ export default function Page() {
   }
 
   const exportJson = () => {
-    const payload = { transactions: active, budgets, bills, categories }
+    const payload = { transactions: active, budgets, categories }
     const a = document.createElement('a')
     a.href = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }))
     a.download = 'ledgerly-backup.json'
@@ -868,7 +778,6 @@ export default function Page() {
         <div className="nav-group">
           <p className="nav-label">Plan & track</p>
           {nav('Category Budgets')}
-          {nav('Recurring & Bills')}
         </div>
         <div className="nav-group">
           <p className="nav-label">Manage</p>
@@ -1071,24 +980,6 @@ export default function Page() {
                         <p className="muted">of {money(b.limit)} planned</p>
                         <div className="progress large"><span className={b.color} style={{ width: `${(b.spent / b.limit) * 100}%` }} /></div>
                         <div className="budget-foot"><span>{Math.round((b.spent / b.limit) * 100)}% used</span><span>{money(b.limit - b.spent)} left</span></div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {view === 'Recurring & Bills' && (
-                <div className="panel page-panel">
-                  <SectionTitle title="Upcoming bills" action={<button className="primary-button" onClick={openBillModal}><Plus size={17} /> Add bill</button>} />
-                  <div className="bill-list">
-                    {bills.map(b => (
-                      <div className="bill-row" key={b.name}>
-                        <div className="bill-icon"><CreditCard size={18} /></div>
-                        <div className="bill-info"><strong>{b.name}</strong><small>Due {new Date(`${b.due}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: '2-digit' })}</small></div>
-                        <strong>{money(b.amount)}</strong>
-                        <button type="button" className={`status ${b.paid ? 'paid' : ''}`} onClick={() => toggleBillPaid(b.name)}><Check size={14} /> {b.paid ? 'Paid' : 'Mark paid'}</button>
-                        <button type="button" className="row-action" aria-label={`Edit ${b.name}`} onClick={() => openEditBill(b)}><Pencil size={15} /></button>
-                        <button type="button" className="row-action" aria-label={`Delete ${b.name}`} onClick={() => deleteBill(b.name)}><Trash2 size={15} /></button>
                       </div>
                     ))}
                   </div>
@@ -1528,20 +1419,6 @@ export default function Page() {
         </div>
       )}
 
-      {isAddBillOpen && (
-        <div className="modal-backdrop" onClick={() => setIsAddBillOpen(false)}>
-          <div className="modal relative z-50 max-w-md w-full bg-white text-slate-900 border border-slate-200 rounded-2xl p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
-            <div className="flex items-start justify-between"><div><h3 className="text-xs font-semibold tracking-wider text-emerald-700 uppercase">PLAN & TRACK</h3><h2 className="mt-1 text-xl font-bold text-slate-900">{editingBill ? 'Edit Recurring Expense' : 'Add Recurring Expense'}</h2></div><button className="text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg p-2 transition-colors" onClick={() => setIsAddBillOpen(false)} aria-label="Close"><X size={18} /></button></div>
-            <div className="flex flex-col gap-4 mt-4">
-              <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-700 mb-1.5 block">Service Name<input autoFocus className="modal-input" placeholder="e.g. Generator Fee" value={billForm.name} onChange={e => setBillForm({ ...billForm, name: e.target.value })} /></label>
-              <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-700 mb-1.5 block">Billing Amount (IQD)<input type="number" className="modal-input" placeholder="0" value={billForm.amount} onChange={e => setBillForm({ ...billForm, amount: e.target.value })} /></label>
-              <div className="grid grid-cols-2 gap-4"><label className="flex flex-col gap-1.5 text-sm font-medium text-slate-700 mb-1.5 block">Due Date<input type="date" className="modal-input" value={billForm.due} onChange={e => setBillForm({ ...billForm, due: e.target.value })} /></label><label className="flex flex-col gap-1.5 text-sm font-medium text-slate-700 mb-1.5 block">Frequency<select className="modal-input" value={billForm.frequency} onChange={e => setBillForm({ ...billForm, frequency: e.target.value as BillForm['frequency'] })}><option>Monthly</option><option>Yearly</option></select></label></div>
-              <button className="w-full py-3.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-medium" type="button" onClick={saveBill}>{editingBill ? 'Save changes' : 'Save recurring expense'}</button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {isAddCategoryOpen && (
         <div className="modal-backdrop" onClick={() => setIsAddCategoryOpen(false)}>
           <div className="modal relative z-50 max-w-md w-full bg-white text-slate-900 border border-slate-200 rounded-2xl p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
@@ -1592,28 +1469,6 @@ export default function Page() {
                         <td>{money(b.spent)}</td>
                         <td>{money(b.limit)}</td>
                         <td>{money(b.limit - b.spent)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </>
-            )}
-
-            {bills.length > 0 && (
-              <>
-                <h2 className="print-section-title">Recurring Bills</h2>
-                <table>
-                  <thead>
-                    <tr><th>Service</th><th>Amount</th><th>Due</th><th>Frequency</th><th>Status</th></tr>
-                  </thead>
-                  <tbody>
-                    {bills.map(b => (
-                      <tr key={b.name}>
-                        <td>{b.name}</td>
-                        <td>{money(b.amount)}</td>
-                        <td>{new Date(`${b.due}T00:00:00`).toLocaleDateString('en-US', { month: 'short', day: '2-digit' })}</td>
-                        <td>{b.frequency}</td>
-                        <td>{b.paid ? 'Paid' : 'Unpaid'}</td>
                       </tr>
                     ))}
                   </tbody>
