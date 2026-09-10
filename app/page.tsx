@@ -257,6 +257,11 @@ export default function Page() {
   const [lastSaved, setLastSaved] = useState('Unsaved changes')
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [now, setNow] = useState(() => new Date())
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const d = new Date()
+    return { year: d.getFullYear(), month: d.getMonth() }
+  })
+  const [isMonthPickerOpen, setIsMonthPickerOpen] = useState(false)
 
   const [periodA, setPeriodA] = useState({ label: 'This Month', start: getDefaultDateRange('This Month').start, end: getDefaultDateRange('This Month').end })
   const [periodB, setPeriodB] = useState({ label: 'Last Month', start: getDefaultDateRange('Last Month').start, end: getDefaultDateRange('Last Month').end })
@@ -291,6 +296,13 @@ export default function Page() {
       document.documentElement.style.setProperty('--primary', selected.value)
     }
   }, [accentChoice])
+
+  useEffect(() => {
+    if (!isMonthPickerOpen) return
+    const handleClick = () => setIsMonthPickerOpen(false)
+    document.addEventListener('click', handleClick)
+    return () => document.removeEventListener('click', handleClick)
+  }, [isMonthPickerOpen])
 
   useEffect(() => {
     document.documentElement.setAttribute('data-reduce-motion', reduceMotion ? 'true' : 'false')
@@ -337,49 +349,54 @@ export default function Page() {
 
   const active = useMemo(() => transactions.filter(t => !t.deleted), [transactions])
   const filtered = useMemo(() => active.filter(t => t.category.toLowerCase().includes(query.toLowerCase())), [active, query])
-  const income = active.filter(t => t.type === 'Income').reduce((a, t) => a + t.amount, 0)
-  const spent = active.filter(t => t.type === 'Expense').reduce((a, t) => a + t.amount, 0)
+
+  const selectedMonthStart = useMemo(() => new Date(selectedMonth.year, selectedMonth.month, 1), [selectedMonth])
+  const selectedMonthEnd = useMemo(() => new Date(selectedMonth.year, selectedMonth.month + 1, 0), [selectedMonth])
+  const selectedMonthLabel = useMemo(
+    () => selectedMonthStart.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+    [selectedMonthStart],
+  )
+  const isCurrentMonthSelected = selectedMonth.year === now.getFullYear() && selectedMonth.month === now.getMonth()
+
+  const inMonthRange = (dateStr: string, start: Date, end: Date) => {
+    const d = new Date(`${dateStr}T00:00:00`)
+    return d >= start && d <= end
+  }
+
+  const activeInSelectedMonth = useMemo(
+    () => active.filter(t => inMonthRange(t.date, selectedMonthStart, selectedMonthEnd)),
+    [active, selectedMonthStart, selectedMonthEnd],
+  )
+
+  const income = activeInSelectedMonth.filter(t => t.type === 'Income').reduce((a, t) => a + t.amount, 0)
+  const spent = activeInSelectedMonth.filter(t => t.type === 'Expense').reduce((a, t) => a + t.amount, 0)
 
   const budgetsWithSpent = useMemo(() => {
-    const now = new Date()
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-
     return budgets.map(b => {
-      const spentThisMonth = active
-        .filter(t => {
-          if (t.type !== 'Expense' || t.category !== b.name) return false
-          const d = new Date(`${t.date}T00:00:00`)
-          return d >= monthStart && d <= monthEnd
-        })
+      const spentThisMonth = activeInSelectedMonth
+        .filter(t => t.type === 'Expense' && t.category === b.name)
         .reduce((sum, t) => sum + t.amount, 0)
       return { ...b, spent: spentThisMonth }
     })
-  }, [budgets, active])
+  }, [budgets, activeInSelectedMonth])
 
   const monthlyTrends = useMemo(() => {
-    const now = new Date()
-    const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0)
-
-    const inRange = (dateStr: string, start: Date, end: Date) => {
-      const d = new Date(`${dateStr}T00:00:00`)
-      return d >= start && d <= end
-    }
+    const prevMonthDate = new Date(selectedMonth.year, selectedMonth.month - 1, 1)
+    const prevMonthStart = new Date(prevMonthDate.getFullYear(), prevMonthDate.getMonth(), 1)
+    const prevMonthEnd = new Date(prevMonthDate.getFullYear(), prevMonthDate.getMonth() + 1, 0)
 
     const sumFor = (type: 'Income' | 'Expense', start: Date, end: Date) =>
       active
-        .filter(t => t.type === type && inRange(t.date, start, end))
+        .filter(t => t.type === type && inMonthRange(t.date, start, end))
         .reduce((a, t) => a + t.amount, 0)
 
-    const thisMonthIncome = sumFor('Income', thisMonthStart, now)
-    const lastMonthIncome = sumFor('Income', lastMonthStart, lastMonthEnd)
-    const thisMonthSpent = sumFor('Expense', thisMonthStart, now)
-    const lastMonthSpent = sumFor('Expense', lastMonthStart, lastMonthEnd)
+    const currentIncome = sumFor('Income', selectedMonthStart, selectedMonthEnd)
+    const prevIncome = sumFor('Income', prevMonthStart, prevMonthEnd)
+    const currentSpent = sumFor('Expense', selectedMonthStart, selectedMonthEnd)
+    const prevSpent = sumFor('Expense', prevMonthStart, prevMonthEnd)
 
-    const thisMonthBalance = thisMonthIncome - thisMonthSpent
-    const lastMonthBalance = lastMonthIncome - lastMonthSpent
+    const currentBalance = currentIncome - currentSpent
+    const prevBalance = prevIncome - prevSpent
 
     const pctChange = (current: number, previous: number) => {
       if (previous === 0) return current === 0 ? 0 : 100
@@ -387,11 +404,26 @@ export default function Page() {
     }
 
     return {
-      balance: pctChange(thisMonthBalance, lastMonthBalance),
-      income: pctChange(thisMonthIncome, lastMonthIncome),
-      spent: pctChange(thisMonthSpent, lastMonthSpent),
+      balance: pctChange(currentBalance, prevBalance),
+      income: pctChange(currentIncome, prevIncome),
+      spent: pctChange(currentSpent, prevSpent),
     }
-  }, [active])
+  }, [active, selectedMonth, selectedMonthStart, selectedMonthEnd])
+
+  const sixMonthSpending = useMemo(() => {
+    const months: { label: string; year: number; month: number; total: number }[] = []
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(selectedMonth.year, selectedMonth.month - i, 1)
+      const start = new Date(d.getFullYear(), d.getMonth(), 1)
+      const end = new Date(d.getFullYear(), d.getMonth() + 1, 0)
+      const total = active
+        .filter(t => t.type === 'Expense' && inMonthRange(t.date, start, end))
+        .reduce((sum, t) => sum + t.amount, 0)
+      months.push({ label: d.toLocaleDateString('en-US', { month: 'short' }), year: d.getFullYear(), month: d.getMonth(), total })
+    }
+    const max = Math.max(...months.map(m => m.total), 1)
+    return months.map(m => ({ ...m, pct: Math.max(6, Math.round((m.total / max) * 100)) }))
+  }, [active, selectedMonth])
 
   const formatTrend = (pct: number) => `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}% vs last month`
 
@@ -846,7 +878,6 @@ export default function Page() {
         <div className="sidebar-footer">
           <div className="avatar" style={avatarUrl ? { backgroundImage: `url(${avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center', color: 'transparent' } : undefined}>ZM</div>
           <div><strong>Zanko Muhammad</strong><small>Personal account</small></div>
-          <ChevronDown size={15} />
         </div>
       </aside>
 
@@ -876,7 +907,47 @@ export default function Page() {
                       <h2>{greeting}, Zanko.</h2>
                       <p>Here&apos;s how your money is moving this month.</p>
                     </div>
-                    <div className="month-pill"><CalendarDays size={16} /> August 2026 <ChevronDown size={15} /></div>
+                    <div className="month-pill" role="button" tabIndex={0} onClick={e => { e.stopPropagation(); setIsMonthPickerOpen(prev => !prev) }} style={{ position: 'relative', cursor: 'pointer' }}>
+                      <CalendarDays size={16} /> {selectedMonthLabel} <ChevronDown size={15} />
+                      {isMonthPickerOpen && (
+                        <div
+                          style={{ position: 'absolute', top: 'calc(100% + 8px)', right: 0, zIndex: 30, background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 12, padding: '0.75rem', boxShadow: '0 16px 32px rgba(15,23,42,0.14)', minWidth: 220 }}
+                          onClick={e => e.stopPropagation()}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                            <button type="button" className="row-action" aria-label="Previous year" onClick={() => setSelectedMonth(prev => ({ ...prev, year: prev.year - 1 }))}>‹‹</button>
+                            <strong style={{ fontSize: 13 }}>{selectedMonth.year}</strong>
+                            <button type="button" className="row-action" aria-label="Next year" onClick={() => setSelectedMonth(prev => ({ ...prev, year: prev.year + 1 }))}>››</button>
+                          </div>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.4rem' }}>
+                            {Array.from({ length: 12 }, (_, m) => m).map(m => {
+                              const label = new Date(selectedMonth.year, m, 1).toLocaleDateString('en-US', { month: 'short' })
+                              const isActive = m === selectedMonth.month
+                              return (
+                                <button
+                                  key={m}
+                                  type="button"
+                                  className={`preset-button ${isActive ? 'active' : ''}`}
+                                  onClick={() => { setSelectedMonth({ year: selectedMonth.year, month: m }); setIsMonthPickerOpen(false) }}
+                                >
+                                  {label}
+                                </button>
+                              )
+                            })}
+                          </div>
+                          {!isCurrentMonthSelected && (
+                            <button
+                              type="button"
+                              className="text-button"
+                              style={{ marginTop: '0.6rem' }}
+                              onClick={() => { setSelectedMonth({ year: now.getFullYear(), month: now.getMonth() }); setIsMonthPickerOpen(false) }}
+                            >
+                              Jump to current month
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <div className="stats-grid">
@@ -887,10 +958,10 @@ export default function Page() {
 
                   <div className="two-col">
                     <div className="panel chart-panel">
-                      <SectionTitle title="Spending overview" action={<button className="text-button">This month <ChevronDown size={14} /></button>} />
+                      <SectionTitle title="Spending overview" />
                       <div className="chart">
-                        <div className="chart-amount">{money(spent)}<span> spent this month</span></div>
-                        <div className="bars">{['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'].map((m, i) => <div className="bar-wrap" key={m}><div className={`bar ${i === 7 ? 'current' : ''}`} style={{ height: `${[45, 58, 40, 69, 55, 72, 48, 84][i]}%` }} /><small>{m}</small></div>)}</div>
+                        <div className="chart-amount">{money(spent)}<span> spent in {selectedMonthLabel}</span></div>
+                        <div className="bars">{sixMonthSpending.map(m => <div className="bar-wrap" key={`${m.year}-${m.month}`}><div className={`bar ${m.month === selectedMonth.month && m.year === selectedMonth.year ? 'current' : ''}`} style={{ height: `${m.pct}%` }} /><small>{m.label}</small></div>)}</div>
                       </div>
                     </div>
 

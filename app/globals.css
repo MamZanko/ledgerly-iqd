@@ -202,6 +202,7 @@ input:focus, select:focus { outline: none; border-color: var(--primary); box-sha
 .topbar h1 { margin: 6px 0 0; font-size: 25px; letter-spacing: -.04em; }
 .top-actions { display: flex; align-items: center; gap: 12px; }
 .icon-button, .outline-button, .text-button, .kebab, .row-action { border: 0; background: transparent; color: var(--muted-foreground); }
+.mobile-menu { display: none; border: 0; background: transparent; color: var(--foreground); padding: 6px; }
 .icon-button { display: grid; place-items: center; padding: 9px; border: 1px solid var(--border); border-radius: 9px; background: #fff; }
 .primary-button { display: inline-flex; align-items: center; gap: 8px; border: 0; border-radius: 8px; background: var(--primary); color: var(--primary-foreground); padding: 10px 15px; font-size: 13px; font-weight: 700; }
 .outline-button { display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; background: #fff; color: var(--foreground); font-size: 13px; }
