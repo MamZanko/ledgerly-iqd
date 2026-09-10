@@ -53,7 +53,6 @@ export async function PATCH(
       const { data: tx, error: txError } = await supabase
         .from('transactions')
         .insert({
-          merchant: bill.name,
           category: 'Utilities',
           amount: bill.amount,
           date: today,
@@ -64,7 +63,6 @@ export async function PATCH(
 
       if (!txError && tx) {
         await logHistory(tx.id, 'created', {
-          merchant: { old: '', new: tx.merchant },
           category: { old: '', new: tx.category },
           amount: { old: 0, new: tx.amount },
           date: { old: '', new: tx.date },

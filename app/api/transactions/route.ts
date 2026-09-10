@@ -32,9 +32,9 @@ export async function GET() {
 // POST: create a new transaction
 export async function POST(req: NextRequest) {
   const body = await req.json()
-  const { merchant, category, amount, date, type } = body
+  const { category, amount, date, type } = body
 
-  if (!merchant?.trim() || !amount || Number(amount) <= 0 || !date || !type) {
+  if (!amount || Number(amount) <= 0 || !date || !type) {
     return NextResponse.json({ error: 'Missing or invalid fields' }, { status: 400 })
   }
 
@@ -42,7 +42,6 @@ export async function POST(req: NextRequest) {
   const { data, error } = await supabase
     .from('transactions')
     .insert({
-      merchant: merchant.trim(),
       category,
       amount: Number(amount),
       date,
@@ -56,7 +55,6 @@ export async function POST(req: NextRequest) {
   }
 
   await logHistory(data.id, 'created', {
-    merchant: { old: '', new: data.merchant },
     category: { old: '', new: data.category },
     amount: { old: 0, new: data.amount },
     date: { old: '', new: data.date },

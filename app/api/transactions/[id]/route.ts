@@ -45,7 +45,6 @@ export async function PATCH(
 
     if (deleted && item) {
       await logHistory(transactionId, 'deleted', {
-        merchant: { old: item.merchant, new: item.merchant },
         category: { old: item.category, new: item.category },
         amount: { old: item.amount, new: item.amount },
       })
@@ -67,9 +66,8 @@ export async function PATCH(
     return NextResponse.json({ error: 'Transaction not found' }, { status: 404 })
   }
 
-  const { merchant, category, amount, date, type } = body
+  const { category, amount, date, type } = body
   const updates = {
-    merchant: merchant?.trim() ?? previous.merchant,
     category: category ?? previous.category,
     amount: amount !== undefined ? Number(amount) : previous.amount,
     date: date ?? previous.date,
@@ -88,7 +86,7 @@ export async function PATCH(
   }
 
   const changedFields: Record<string, { old: any; new: any }> = {}
-  ;(['merchant', 'category', 'amount', 'date', 'type'] as const).forEach((key) => {
+  ;(['category', 'amount', 'date', 'type'] as const).forEach((key) => {
     if (previous[key] !== updated[key]) {
       changedFields[key] = { old: previous[key], new: updated[key] }
     }

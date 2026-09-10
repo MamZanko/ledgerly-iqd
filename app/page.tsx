@@ -39,7 +39,7 @@ import {
 } from 'lucide-react'
 
 type View = 'Overview' | 'All Transactions' | 'Analytics & Reports' | 'Category Budgets' | 'Recurring & Bills' | 'Settings' | 'History' | 'Trash'
-type Transaction = { id: number; merchant: string; category: string; date: string; amount: number; type: 'Expense' | 'Income'; deleted?: boolean }
+type Transaction = { id: number; category: string; date: string; amount: number; type: 'Expense' | 'Income'; deleted?: boolean }
 type HistoryAction = 'created' | 'edited' | 'deleted' | 'restored'
 type HistoryEntry = {
   id: number
@@ -49,7 +49,7 @@ type HistoryEntry = {
   timestamp: string
 }
 type SettingsSection = 'profile' | 'regional' | 'appearance' | 'categories' | 'data'
-type TransactionForm = { merchant: string; category: string; amount: string; date: string; type: 'Expense' | 'Income' }
+type TransactionForm = { category: string; amount: string; date: string; type: 'Expense' | 'Income' }
 type BudgetForm = { name: string; limit: string; color: string }
 type BillForm = { name: string; amount: string; due: string; frequency: 'Monthly' | 'Yearly' }
 type Budget = { name: string; spent: number; limit: number; color: string }
@@ -85,7 +85,6 @@ const accentOptions = [
 const monthOptions = ['1st of every month', '15th of every month', 'Last day of every month']
 
 const emptyForm: TransactionForm = {
-  merchant: '',
   category: '',
   amount: '',
   date: '2026-08-24',
@@ -246,8 +245,6 @@ export default function Page() {
   const [editingBill, setEditingBill] = useState<string | null>(null)
   const [categoryForm, setCategoryForm] = useState<CategoryForm>(emptyCategoryForm)
   const [editingCategory, setEditingCategory] = useState<number | null>(null)
-  const [merchantQuery, setMerchantQuery] = useState('')
-  const [isMerchantFocused, setIsMerchantFocused] = useState(false)
   const [categoryQuery, setCategoryQuery] = useState('')
   const [settingsSection, setSettingsSection] = useState<SettingsSection>('profile')
   const [displayName, setDisplayName] = useState('Zanko Muhammad')
@@ -339,7 +336,7 @@ export default function Page() {
   }
 
   const active = useMemo(() => transactions.filter(t => !t.deleted), [transactions])
-  const filtered = useMemo(() => active.filter(t => `${t.merchant} ${t.category}`.toLowerCase().includes(query.toLowerCase())), [active, query])
+  const filtered = useMemo(() => active.filter(t => t.category.toLowerCase().includes(query.toLowerCase())), [active, query])
   const income = active.filter(t => t.type === 'Income').reduce((a, t) => a + t.amount, 0)
   const spent = active.filter(t => t.type === 'Expense').reduce((a, t) => a + t.amount, 0)
 
@@ -385,11 +382,6 @@ export default function Page() {
   const incomeCategories = useMemo(() => categories.filter(c => c.type === 'Income'), [categories])
   const categoriesForFormType = useMemo(() => categories.filter(c => c.type === form.type), [categories, form.type])
 
-  const merchantSuggestions = useMemo(() => {
-    const names = [...new Set(active.map(t => t.merchant))]
-    return names.filter(name => name.toLowerCase().includes(merchantQuery.trim().toLowerCase())).slice(0, 6)
-  }, [active, merchantQuery])
-
   const historyEntries = useMemo(() => {
     const items = historyFilter === 'All' ? history : history.filter(entry => entry.action === historyFilter)
     return [...items].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
@@ -425,14 +417,12 @@ export default function Page() {
     setModalMode('add')
     setEditingId(null)
     setForm(emptyForm)
-    setMerchantQuery('')
     setCategoryQuery('')
   }
 
   const openAddModal = () => {
     const defaultCategory = categories.find(c => c.type === 'Expense')?.name ?? ''
     setForm({ ...emptyForm, category: defaultCategory })
-    setMerchantQuery('')
     setCategoryQuery('')
     setModalMode('add')
     setEditingId(null)
@@ -581,13 +571,11 @@ export default function Page() {
     setModalMode('edit')
     setEditingId(id)
     setForm({
-      merchant: transaction.merchant,
       category: transaction.category,
       amount: String(transaction.amount),
       date: transaction.date,
       type: transaction.type,
     })
-    setMerchantQuery(transaction.merchant)
     setCategoryQuery(transaction.category)
     setIsAddTransactionOpen(true)
   }
@@ -603,13 +591,12 @@ export default function Page() {
   }
 
   const addTransaction = async () => {
-    if (!form.merchant.trim() || !form.amount || Number(form.amount) <= 0 || !form.category) return
+    if (!form.amount || Number(form.amount) <= 0 || !form.category) return
     try {
       const res = await fetch('/api/transactions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          merchant: form.merchant.trim(),
           category: form.category,
           amount: Number(form.amount),
           date: form.date,
@@ -627,13 +614,12 @@ export default function Page() {
   }
 
   const saveTransaction = async () => {
-    if (editingId === null || !form.merchant.trim() || !form.amount || Number(form.amount) <= 0 || !form.category) return
+    if (editingId === null || !form.amount || Number(form.amount) <= 0 || !form.category) return
     try {
       const res = await fetch(`/api/transactions/${editingId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          merchant: form.merchant.trim(),
           category: form.category,
           amount: Number(form.amount),
           date: form.date,
@@ -754,7 +740,7 @@ export default function Page() {
   }
 
   const exportCsv = () => {
-    const csv = ['Merchant,Category,Date,Amount,Type', ...active.map(t => `${t.merchant},${t.category},${t.date},${t.amount},${t.type}`)].join('\n')
+    const csv = ['Category,Date,Amount,Type', ...active.map(t => `${t.category},${t.date},${t.amount},${t.type}`)].join('\n')
     const a = document.createElement('a')
     a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
     a.download = 'ledgerly-transactions.csv'
@@ -952,7 +938,7 @@ export default function Page() {
                     {historyEntries.length ? (
                       historyEntries.map(entry => {
                         const transaction = transactions.find(t => t.id === entry.transactionId)
-                        const merchant = transaction?.merchant ?? 'Unknown merchant'
+                        const entryLabel = transaction?.category ?? 'Unknown category'
                         const summary = entry.changedFields
                           ? Object.entries(entry.changedFields)
                               .slice(0, 3)
@@ -971,7 +957,7 @@ export default function Page() {
                             <div className="history-main">
                               <div className="history-header">
                                 <span className={actionBadgeClasses[entry.action]}>{entry.action}</span>
-                                <strong>{merchant}</strong>
+                                <strong>{entryLabel}</strong>
                               </div>
                               <p>{summary}</p>
                             </div>
@@ -1404,28 +1390,6 @@ export default function Page() {
               </div>
 
               <div className="flex flex-col space-y-1.5 relative">
-                <label className="text-slate-300 font-medium text-sm mb-1.5 block">Merchant Name</label>
-                <input
-                  autoFocus
-                  className="bg-slate-50 border border-slate-200 text-slate-900 placeholder:text-slate-400 rounded-xl px-4 py-3 focus:bg-white focus:border-emerald-600 focus:ring-2 focus:ring-emerald-600/20 transition-all w-full"
-                  placeholder="e.g. Family Mall"
-                  value={form.merchant}
-                  onChange={e => { setForm({ ...form, merchant: e.target.value }); setMerchantQuery(e.target.value); setIsMerchantFocused(true) }}
-                  onFocus={() => setIsMerchantFocused(true)}
-                  onBlur={() => setTimeout(() => setIsMerchantFocused(false), 120)}
-                />
-                {isMerchantFocused && modalMode === 'add' && merchantSuggestions.length > 0 && form.merchant && (
-                  <div className="suggestion-list absolute z-[100] top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl max-h-48 overflow-y-auto">
-                    {merchantSuggestions.map(name => (
-                      <button key={name} type="button" className="suggestion-item" onClick={() => { setForm({ ...form, merchant: name }); setMerchantQuery(name); setIsMerchantFocused(false) }}>
-                        {name}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="flex flex-col space-y-1.5 relative">
                 <label className="text-slate-300 font-medium text-sm mb-1.5 block">Category</label>
                 <CategoryDropdown
                   value={form.category}
@@ -1573,7 +1537,6 @@ export default function Page() {
             <table>
               <thead>
                 <tr>
-                  <th>Merchant</th>
                   <th>Category</th>
                   <th>Date</th>
                   <th>Amount</th>
@@ -1583,7 +1546,6 @@ export default function Page() {
               <tbody>
                 {filtered.map(t => (
                   <tr key={t.id}>
-                    <td>{t.merchant}</td>
                     <td>{t.category}</td>
                     <td>{t.date}</td>
                     <td className={t.type === 'Income' ? 'print-income' : ''}>{t.type === 'Income' ? '+' : '-'}{money(t.amount)}</td>
@@ -1610,8 +1572,8 @@ function TransactionList({ rows, onDelete, onEdit, onRestore, onPermanentDelete 
             {t.type === 'Income' ? <TrendingUp size={17} /> : <Receipt size={17} />}
           </div>
           <div className="tx-info">
-            <strong>{t.merchant}</strong>
-            <small>{t.category} · {t.date}</small>
+            <strong>{t.category}</strong>
+            <small>{t.date}</small>
           </div>
           <strong className={t.type === 'Income' ? 'amount-income' : ''}>{t.type === 'Income' ? '+' : '-'}{money(t.amount)}</strong>
           {onEdit && <button className="row-action" aria-label="Edit" onClick={() => onEdit(t.id)}><Pencil size={15} /></button>}

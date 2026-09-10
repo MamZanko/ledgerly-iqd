@@ -348,7 +348,7 @@ input:focus, select:focus { outline: none; border-color: var(--primary); box-sha
 .modal-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 1.5rem; }
 .modal-head h2 { margin: 6px 0 0; font-size: 25px; letter-spacing: -.04em; }
 .form { display: flex; flex-direction: column; gap: 1.5rem; }
-.form label, .settings-field, .merchant-field, .category-field { display: flex; flex-direction: column; gap: 0.75rem; font-size: 13px; color: var(--muted-foreground); }
+.form label, .settings-field, .category-field { display: flex; flex-direction: column; gap: 0.75rem; font-size: 13px; color: var(--muted-foreground); }
 .form input, .form select, .settings-field input, .settings-field select {
   width: 100%;
   min-height: 42px;
@@ -381,7 +381,7 @@ input:focus, select:focus { outline: none; border-color: var(--primary); box-sha
 }
 .full { width: 100%; justify-content: center; }
 
-.merchant-field, .category-field { position: relative; }
+.category-field { position: relative; }
 .suggestion-list {
   position: absolute;
   top: calc(100% + 8px);
